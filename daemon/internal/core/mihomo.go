@@ -10,16 +10,11 @@ import (
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
+	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 )
 
-const (
-	Binary  = "/home/phablet/rayut-day1/mihomo"
-	Config  = "/home/phablet/rayut-day2/tun.yaml"
-	Runtime = "/home/phablet/rayut-day2/runtime-rayutd"
-)
-
-func pidFile() string { return Runtime + "/mihomo.pid" }
-func logFile() string { return Runtime + "/mihomo.log" }
+func pidFile() string { return paths.Runtime + "/mihomo.pid" }
+func logFile() string { return paths.Runtime + "/mihomo.log" }
 
 func Alive() (int, bool) {
 	data, err := os.ReadFile(pidFile())
@@ -41,14 +36,20 @@ func Start() error {
 	if _, ok := Alive(); ok {
 		return fmt.Errorf("already-running")
 	}
-	if err := os.MkdirAll(Runtime, 0o700); err != nil {
+	if _, err := os.Stat(paths.Mihomo); err != nil {
+		return fmt.Errorf("core missing")
+	}
+	if _, err := os.Stat(paths.Profile); err != nil {
+		return fmt.Errorf("profile missing")
+	}
+	if err := os.MkdirAll(paths.Runtime, 0o700); err != nil {
 		return err
 	}
 	log, err := os.OpenFile(logFile(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(Binary, "-d", Runtime, "-f", Config)
+	cmd := exec.Command(paths.Mihomo, "-d", paths.Runtime, "-f", paths.Profile)
 	cmd.Stdout = log
 	cmd.Stderr = log
 	if err := cmd.Start(); err != nil {

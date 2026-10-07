@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -13,7 +14,7 @@ import (
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/api"
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
-	"github.com/alpha-liu-01/rayut/daemon/internal/core"
+	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 )
 
@@ -26,32 +27,27 @@ func main() {
 		fmt.Fprintln(os.Stderr, "rayutd --session must run as root")
 		os.Exit(1)
 	}
+	if err := paths.Init(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if os.Getenv("RAYUTD_CHILD") != "1" {
 		supervise()
 	}
 	if err := cgroup.LeaveAppScope(os.Getpid()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-	if err := os.MkdirAll(core.Runtime, 0o700); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	_ = os.Remove(core.Runtime + "/ready")
+	_ = os.Remove(paths.Ready)
 	if err := ensureSingle(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	if err := route.Recover(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	server, err := api.New()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 	ln, err := net.Listen("tcp", api.ListenAddr)
 	if err != nil {
+		if errors.Is(err, syscall.EADDRINUSE) {
+			fmt.Fprintln(os.Stderr, "already-running")
+			os.Exit(2)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -61,7 +57,18 @@ func main() {
 		fmt.Fprintln(os.Stderr, "refusing non-loopback listener")
 		os.Exit(1)
 	}
-	if err := os.WriteFile(core.Runtime+"/ready", []byte("ok\n"), 0o600); err != nil {
+	if err := route.Recover(); err != nil {
+		ln.Close()
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	server, err := api.New()
+	if err != nil {
+		ln.Close()
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(paths.Ready, []byte("ok\n"), 0o600); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -82,12 +89,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	_ = server.Shutdown()
-	_ = os.Remove(core.Runtime + "/rayutd.pid")
-	_ = os.Remove(core.Runtime + "/ready")
+	_ = os.Remove(paths.HelperPid)
+	_ = os.Remove(paths.Ready)
 }
 
 func supervise() {
-	_ = os.Remove(core.Runtime + "/ready")
+	_ = os.Remove(paths.Ready)
 	cmd := exec.Command(os.Args[0], os.Args[1:]...)
 	cmd.Env = append(os.Environ(), "RAYUTD_CHILD=1")
 	cmd.Stdout = os.Stdout
@@ -99,7 +106,7 @@ func supervise() {
 	}
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
-		if _, err := os.Stat(core.Runtime + "/ready"); err == nil {
+		if _, err := os.Stat(paths.Ready); err == nil {
 			os.Exit(0)
 		}
 		var status syscall.WaitStatus
@@ -117,7 +124,7 @@ func supervise() {
 }
 
 func ensureSingle() error {
-	path := core.Runtime + "/rayutd.pid"
+	path := paths.HelperPid
 	data, err := os.ReadFile(path)
 	if err == nil {
 		pid, conv := strconv.Atoi(strings.TrimSpace(string(data)))

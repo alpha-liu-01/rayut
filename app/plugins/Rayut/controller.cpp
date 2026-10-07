@@ -1,5 +1,7 @@
 #include "controller.h"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QEventLoop>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,12 +10,21 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcess>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
 
 namespace {
-const char tokenPath[] = "/home/phablet/rayut-day2/client-token";
-const char helperPath[] = "/home/phablet/rayut-day2/rayutd";
+QString helperPath()
+{
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("bin/rayutd"));
+}
+
+QString tokenPath()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    return QDir(dir).filePath(QStringLiteral("client-token"));
+}
 }
 
 Controller::Controller(QObject *parent)
@@ -61,7 +72,7 @@ void Controller::setMessage(const QString &message)
 
 bool Controller::readToken()
 {
-    QFile file(QString::fromLatin1(tokenPath));
+    QFile file(tokenPath());
     if (!file.open(QIODevice::ReadOnly)) {
         m_token.clear();
         return false;
@@ -102,7 +113,7 @@ void Controller::startHelper(QString password)
         QStringLiteral("-p"),
         QStringLiteral(""),
         QStringLiteral("--"),
-        QString::fromLatin1(helperPath),
+        helperPath(),
         QStringLiteral("--session"),
     });
     if (!process.waitForStarted(5000)) {
@@ -166,17 +177,24 @@ bool Controller::call(const QString &method, const QString &path)
     timer.stop();
 
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray body = reply->readAll();
     if (!reply->isFinished() || reply->error() != QNetworkReply::NoError || status < 200 || status >= 300) {
         reply->deleteLater();
         if (status == 401) {
             m_token.clear();
         }
         if (method != QLatin1String("GET")) {
-            setMessage(QStringLiteral("请求失败"));
+            const QString detail = QString::fromUtf8(body).trimmed();
+            if (detail == QLatin1String("profile missing") || detail == QLatin1String("core missing")) {
+                setMessage(detail == QLatin1String("profile missing")
+                    ? QStringLiteral("缺少 profile")
+                    : QStringLiteral("缺少核心"));
+            } else {
+                setMessage(QStringLiteral("请求失败"));
+            }
         }
         return false;
     }
-    const QByteArray body = reply->readAll();
     reply->deleteLater();
     applyStatus(body);
     return true;

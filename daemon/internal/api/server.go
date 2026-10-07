@@ -5,21 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
+	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 )
-
-const clientTokenPath = "/home/phablet/rayut-day2/client-token"
 
 const ListenAddr = "127.0.0.1:18771"
 
@@ -35,10 +30,10 @@ func New() (*Server, error) {
 		return nil, err
 	}
 	token := hex.EncodeToString(buf)
-	if err := os.MkdirAll(core.Runtime, 0o700); err != nil {
+	if err := os.MkdirAll(paths.Runtime, 0o700); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(core.Runtime+"/api.token", []byte(token+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(paths.Runtime+"/api.token", []byte(token+"\n"), 0o600); err != nil {
 		return nil, err
 	}
 	if err := publishClientToken(token); err != nil {
@@ -115,6 +110,10 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := core.Start(); err != nil {
+		if err.Error() == "profile missing" || err.Error() == "core missing" {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		http.Error(w, "start failed", http.StatusInternalServerError)
 		return
 	}
@@ -168,50 +167,15 @@ func (s *Server) snapshot() map[string]string {
 }
 
 func publishClientToken(token string) error {
-	if err := os.WriteFile(clientTokenPath, []byte(token+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(paths.ClientToken, []byte(token+"\n"), 0o600); err != nil {
 		return err
 	}
-	uid, gid, err := invokingIDs()
-	if err != nil {
-		_ = os.Remove(clientTokenPath)
-		return err
-	}
-	if err := os.Chown(clientTokenPath, uid, gid); err != nil {
-		_ = os.Remove(clientTokenPath)
+	uid, gid := paths.Owner()
+	if err := os.Chown(paths.ClientToken, uid, gid); err != nil {
+		_ = os.Remove(paths.ClientToken)
 		return err
 	}
 	return nil
-}
-
-func invokingIDs() (int, int, error) {
-	if uid, gid, ok := numericPair(os.Getenv("SUDO_UID"), os.Getenv("SUDO_GID")); ok {
-		return uid, gid, nil
-	}
-	out, err := exec.Command("getent", "passwd", "phablet").Output()
-	if err != nil {
-		return 0, 0, err
-	}
-	fields := strings.Split(strings.TrimSpace(string(out)), ":")
-	if len(fields) < 4 {
-		return 0, 0, fmt.Errorf("unexpected getent passwd output")
-	}
-	uid, gid, ok := numericPair(fields[2], fields[3])
-	if !ok {
-		return 0, 0, fmt.Errorf("unexpected getent passwd output")
-	}
-	return uid, gid, nil
-}
-
-func numericPair(uidText, gidText string) (int, int, bool) {
-	uid, err := strconv.Atoi(uidText)
-	if err != nil {
-		return 0, 0, false
-	}
-	gid, err := strconv.Atoi(gidText)
-	if err != nil {
-		return 0, 0, false
-	}
-	return uid, gid, true
 }
 
 func writeJSON(w http.ResponseWriter, body any) {

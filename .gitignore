@@ -2,3 +2,5 @@
 /private/
 /app/build/
 *.click
+/app/packaging/core/rayutd
+/app/packaging/core/mihomo

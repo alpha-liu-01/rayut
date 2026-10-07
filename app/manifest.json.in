@@ -9,7 +9,7 @@
             "desktop": "rayut.desktop"
         }
     },
-    "version": "0.1.1",
+    "version": "0.1.2",
     "maintainer": "alpha-liu-01 <alpha-liu-01@users.noreply.github.com>",
     "framework": "$ENV{CLICK_FRAMEWORK}"
 }
