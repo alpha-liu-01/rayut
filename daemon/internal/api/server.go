@@ -1,0 +1,220 @@
+package api
+
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/alpha-liu-01/rayut/daemon/internal/core"
+	"github.com/alpha-liu-01/rayut/daemon/internal/route"
+)
+
+const clientTokenPath = "/home/phablet/rayut-day2/client-token"
+
+const ListenAddr = "127.0.0.1:18771"
+
+type Server struct {
+	token string
+	mu    sync.Mutex
+	http  *http.Server
+}
+
+func New() (*Server, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return nil, err
+	}
+	token := hex.EncodeToString(buf)
+	if err := os.MkdirAll(core.Runtime, 0o700); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(core.Runtime+"/api.token", []byte(token+"\n"), 0o600); err != nil {
+		return nil, err
+	}
+	if err := publishClientToken(token); err != nil {
+		return nil, err
+	}
+	s := &Server{token: token}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/health", s.auth(s.health))
+	mux.HandleFunc("/v1/status", s.auth(s.status))
+	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
+	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
+	s.http = &http.Server{
+		Addr:              ListenAddr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	return s, nil
+}
+
+func (s *Server) Serve(ln net.Listener) error {
+	return s.http.Serve(ln)
+}
+
+func (s *Server) Shutdown() error {
+	return s.http.Close()
+}
+
+func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil || (host != "127.0.0.1" && host != "::1") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		got := r.Header.Get("Authorization")
+		want := "Bearer " + s.token
+		if len(got) != len(want) || !hmac.Equal([]byte(got), []byte(want)) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *Server) health(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+func (s *Server) status(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, s.snapshot())
+}
+
+func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := core.Alive(); ok {
+		writeJSON(w, s.snapshot())
+		return
+	}
+	if err := route.Recover(); err != nil {
+		http.Error(w, "recover failed", http.StatusInternalServerError)
+		return
+	}
+	if err := core.Start(); err != nil {
+		http.Error(w, "start failed", http.StatusInternalServerError)
+		return
+	}
+	if err := core.WaitTun(15 * time.Second); err != nil {
+		_ = core.Stop()
+		_ = route.Recover()
+		http.Error(w, "tun failed", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, s.snapshot())
+}
+
+func (s *Server) disable(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.stopTun(); err != nil {
+		http.Error(w, "disable failed", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, s.snapshot())
+}
+
+// StopTun is used when the session helper itself is asked to exit.
+func (s *Server) StopTun() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.stopTun()
+}
+
+func (s *Server) stopTun() error {
+	if err := core.Stop(); err != nil {
+		return err
+	}
+	return route.Recover()
+}
+
+func (s *Server) snapshot() map[string]string {
+	state := "stopped"
+	if _, ok := core.Alive(); ok {
+		state = "running"
+	}
+	tun := "absent"
+	if present, err := route.TunPresent(); err == nil && present {
+		tun = "present"
+	}
+	return map[string]string{"mihomo": state, "tun": tun}
+}
+
+func publishClientToken(token string) error {
+	if err := os.WriteFile(clientTokenPath, []byte(token+"\n"), 0o600); err != nil {
+		return err
+	}
+	uid, gid, err := invokingIDs()
+	if err != nil {
+		_ = os.Remove(clientTokenPath)
+		return err
+	}
+	if err := os.Chown(clientTokenPath, uid, gid); err != nil {
+		_ = os.Remove(clientTokenPath)
+		return err
+	}
+	return nil
+}
+
+func invokingIDs() (int, int, error) {
+	if uid, gid, ok := numericPair(os.Getenv("SUDO_UID"), os.Getenv("SUDO_GID")); ok {
+		return uid, gid, nil
+	}
+	out, err := exec.Command("getent", "passwd", "phablet").Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	fields := strings.Split(strings.TrimSpace(string(out)), ":")
+	if len(fields) < 4 {
+		return 0, 0, fmt.Errorf("unexpected getent passwd output")
+	}
+	uid, gid, ok := numericPair(fields[2], fields[3])
+	if !ok {
+		return 0, 0, fmt.Errorf("unexpected getent passwd output")
+	}
+	return uid, gid, nil
+}
+
+func numericPair(uidText, gidText string) (int, int, bool) {
+	uid, err := strconv.Atoi(uidText)
+	if err != nil {
+		return 0, 0, false
+	}
+	gid, err := strconv.Atoi(gidText)
+	if err != nil {
+		return 0, 0, false
+	}
+	return uid, gid, true
+}
+
+func writeJSON(w http.ResponseWriter, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(body)
+}

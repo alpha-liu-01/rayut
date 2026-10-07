@@ -1,0 +1,15 @@
+{
+    "name": "rayut.rayut",
+    "description": "Session helper switch for the Rayut device probe",
+    "architecture": "$ENV{ARCH}",
+    "title": "Rayut",
+    "hooks": {
+        "rayut": {
+            "apparmor": "rayut.apparmor",
+            "desktop": "rayut.desktop"
+        }
+    },
+    "version": "0.1.1",
+    "maintainer": "alpha-liu-01 <alpha-liu-01@users.noreply.github.com>",
+    "framework": "$ENV{CLICK_FRAMEWORK}"
+}
