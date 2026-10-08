@@ -157,6 +157,12 @@ Controller::Controller(QObject *parent)
     , m_editLines(new EditLineModel(this))
     , m_editFocusRow(-1)
     , m_editFocusColumn(0)
+    , m_sessionUpload(0)
+    , m_sessionDownload(0)
+    , m_uploadRate(0)
+    , m_downloadRate(0)
+    , m_totalUpload(0)
+    , m_totalDownload(0)
 {
 }
 
@@ -349,7 +355,9 @@ void Controller::refresh()
 {
     QByteArray body;
     if (!request(QStringLiteral("GET"), QStringLiteral("/v1/status"), QByteArray(), &body, 30000)) {
-        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty();
+        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty()
+            || m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0
+            || m_totalUpload != 0 || m_totalDownload != 0 || !m_trafficSamples.isEmpty();
         m_helperRunning = false;
         m_tunRunning = false;
         m_coreRunning = false;
@@ -363,6 +371,8 @@ void Controller::refresh()
         m_sessionDownload = 0;
         m_uploadRate = 0;
         m_downloadRate = 0;
+        m_totalUpload = 0;
+        m_totalDownload = 0;
         m_trafficSamples.clear();
         if (changed) {
             queueStateChanged();
@@ -683,12 +693,18 @@ void Controller::refreshTraffic()
 {
     QByteArray body;
     if (!request(QStringLiteral("GET"), QStringLiteral("/v1/traffic"), QByteArray(), &body, 3000)) {
-        const bool changed = m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0 || !m_trafficSamples.isEmpty();
+        const bool clearTotals = !m_helperRunning;
+        const bool changed = m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0 || !m_trafficSamples.isEmpty()
+            || (clearTotals && (m_totalUpload != 0 || m_totalDownload != 0));
         m_sessionUpload = 0;
         m_sessionDownload = 0;
         m_uploadRate = 0;
         m_downloadRate = 0;
         m_trafficSamples.clear();
+        if (clearTotals) {
+            m_totalUpload = 0;
+            m_totalDownload = 0;
+        }
         if (changed) {
             queueStateChanged();
         }
