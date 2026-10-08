@@ -43,6 +43,7 @@ type SelectorInfo struct {
 	Name       string     `json:"name"`
 	Type       string     `json:"type"`
 	Selectable bool       `json:"selectable"`
+	Traffic    bool       `json:"traffic"`
 	Now        string     `json:"now"`
 	Nodes      []NodeInfo `json:"nodes"`
 }
@@ -911,6 +912,7 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 	groups, _ := doc["proxy-groups"].([]any)
 	out := make([]SelectorInfo, 0)
 	active := effectiveNode(doc)
+	traffic := matchTarget(doc)
 	for _, item := range groups {
 		group, ok := item.(map[string]any)
 		if !ok || !selectableKind(scalarText(group["type"])) {
@@ -939,10 +941,12 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 			}
 			nodes = append(nodes, info)
 		}
+		groupName := scalarText(group["name"])
 		out = append(out, SelectorInfo{
-			Name:       scalarText(group["name"]),
+			Name:       groupName,
 			Type:       scalarText(group["type"]),
-			Selectable: manualSelect(scalarText(group["type"])),
+			Selectable: manual,
+			Traffic:    groupName != "" && groupName == traffic,
 			Now:        now,
 			Nodes:      nodes,
 		})

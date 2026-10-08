@@ -216,7 +216,7 @@ rules:
 		t.Fatal(err)
 	}
 	selectors, err := store.Selectors(groups[0].ID)
-	if err != nil || selectors[0].Now != "japan" || selectors[1].Now != "japan" {
+	if err != nil || selectors[0].Now != "japan" || selectors[1].Now != "japan" || selectors[0].Traffic || !selectors[1].Traffic {
 		t.Fatalf("%+v %v", selectors, err)
 	}
 	if !selectors[1].Nodes[1].Selected || selectors[1].Nodes[0].Selected || !selectors[0].Nodes[0].Selected {

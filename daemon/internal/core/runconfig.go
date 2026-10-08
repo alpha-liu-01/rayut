@@ -34,6 +34,7 @@ func prepareRunConfig() (string, error) {
 	}
 	profile.EnsureIPv6(root)
 	disableStoredSelection(root)
+	pinSavedSelection(root)
 	overlayController(root, secret)
 	out, err := yaml.Marshal(root)
 	if err != nil {
@@ -55,6 +56,29 @@ func disableStoredSelection(root map[string]any) {
 		root["profile"] = section
 	}
 	section["store-selected"] = false
+}
+
+// pinSavedSelection copies a manual group's saved now into the field mihomo
+// actually reads. The now field is only for the interface; an empty
+// default-selected makes the group fall through to its first member.
+func pinSavedSelection(root map[string]any) {
+	groups, _ := root["proxy-groups"].([]any)
+	for _, item := range groups {
+		group, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		kind, _ := group["type"].(string)
+		if !strings.EqualFold(strings.TrimSpace(kind), "select") {
+			continue
+		}
+		now, _ := group["now"].(string)
+		now = strings.TrimSpace(now)
+		if now == "" {
+			continue
+		}
+		group["default-selected"] = now
+	}
 }
 
 func overlayController(root map[string]any, secret string) {

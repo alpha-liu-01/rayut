@@ -28,7 +28,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.23";
+const char kAppVersion[] = "0.1.25";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -1079,6 +1079,7 @@ void Controller::applySelectors(const QByteArray &body)
     bool keep = false;
     QString firstManual;
     QString firstName;
+    QString trafficName;
     for (const QJsonValue &value : groups) {
         const QJsonObject group = value.toObject();
         const QString name = group.value(QStringLiteral("name")).toString();
@@ -1108,13 +1109,20 @@ void Controller::applySelectors(const QByteArray &body)
         if (firstManual.isEmpty() && group.value(QStringLiteral("selectable")).toBool()) {
             firstManual = name;
         }
+        if (trafficName.isEmpty() && group.value(QStringLiteral("traffic")).toBool()) {
+            trafficName = name;
+        }
         if (name == m_selectorName) {
             keep = true;
         }
     }
     m_proxySelectors = list;
     if (!keep) {
-        m_selectorName = !firstManual.isEmpty() ? firstManual : firstName;
+        if (!trafficName.isEmpty()) {
+            m_selectorName = trafficName;
+        } else {
+            m_selectorName = !firstManual.isEmpty() ? firstManual : firstName;
+        }
     }
     queueStateChanged();
 }

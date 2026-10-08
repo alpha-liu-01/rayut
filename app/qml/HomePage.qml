@@ -15,6 +15,9 @@ Page {
 
     property bool searching: false
     property string filterText: ""
+    property string shownSelector: ""
+    property bool pendingTraffic: false
+    property int revealNonce: 0
 
     function byteText(value) {
         var n = Number(value)
@@ -82,6 +85,37 @@ Page {
         work.start()
     }
 
+    function openOnConnection() {
+        var groups = Controller.proxySelectors
+        if (groups.length === 0)
+            return false
+        homeRoot.pendingTraffic = false
+        homeRoot.revealNonce = homeRoot.revealNonce + 1
+        var trafficName = ""
+        for (var i = 0; i < groups.length; i++) {
+            if (groups[i].traffic) {
+                trafficName = groups[i].name
+                break
+            }
+        }
+        if (trafficName !== "" && Controller.selectorName !== trafficName) {
+            Controller.showSelector(trafficName)
+            return true
+        }
+        homeRoot.shownSelector = ""
+        return false
+    }
+
+    function revealPolicy() {
+        var groups = Controller.proxySelectors
+        for (var i = 0; i < groups.length; i++) {
+            if (groups[i].name === Controller.selectorName) {
+                policyTabs.positionViewAtIndex(i, ListView.Contain)
+                return
+            }
+        }
+    }
+
     function groupMatches(index) {
         var groups = Controller.profileGroups
         if (index < 0 || index >= groups.length)
@@ -112,6 +146,7 @@ Page {
 
     onVisibleChanged: {
         if (visible) {
+            pendingTraffic = true
             Controller.refreshTraffic()
             Controller.refreshProfileGroups()
         }
@@ -299,6 +334,24 @@ Page {
             boundsBehavior: Flickable.StopAtBounds
             model: Controller.proxySelectors
 
+            Timer {
+                id: revealPolicyTimer
+                interval: 1
+                onTriggered: homeRoot.revealPolicy()
+            }
+
+            Connections {
+                target: Controller
+                onStateChanged: {
+                    if (homeRoot.pendingTraffic && homeRoot.openOnConnection())
+                        return
+                    if (Controller.selectorName === homeRoot.shownSelector)
+                        return
+                    homeRoot.shownSelector = Controller.selectorName
+                    revealPolicyTimer.restart()
+                }
+            }
+
             delegate: AbstractButton {
                 width: policyLabel.implicitWidth + units.gu(3)
                 height: policyTabs.height
@@ -368,6 +421,7 @@ Page {
                     model: index === pager.currentIndex && homeRoot.groupMatches(index) ? homeRoot.filteredNodes() : []
                     property real keptY: 0
                     property string keptKey: ""
+                    property int seenNonce: 0
 
                     onContentYChanged: {
                         if (moving || dragging || flicking)
@@ -381,15 +435,33 @@ Page {
                         onTriggered: nodes.contentY = y
                     }
 
+                    Timer {
+                        id: revealNode
+                        interval: 1
+                        onTriggered: {
+                            var rows = homeRoot.filteredNodes()
+                            for (var i = 0; i < rows.length; i++) {
+                                if (rows[i].selected) {
+                                    nodes.positionViewAtIndex(i, ListView.Center)
+                                    nodes.keptY = nodes.contentY
+                                    return
+                                }
+                            }
+                        }
+                    }
+
                     Connections {
                         target: Controller
                         onStateChanged: {
+                            var opened = nodes.seenNonce !== homeRoot.revealNonce
+                            if (opened)
+                                nodes.seenNonce = homeRoot.revealNonce
                             if (nodes.moving || nodes.dragging || nodes.flicking)
                                 return
                             var key = Controller.viewedGroup + "/" + Controller.selectorName
-                            if (key !== nodes.keptKey) {
+                            if (opened || key !== nodes.keptKey) {
                                 nodes.keptKey = key
-                                nodes.keptY = 0
+                                revealNode.restart()
                                 return
                             }
                             scrollKeep.y = nodes.keptY
