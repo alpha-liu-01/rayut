@@ -1,8 +1,19 @@
 # Rayut
 
+<p align="center">
+  <img src="app/assets/logo.svg" alt="Rayut" width="96">
+</p>
+
 Rayut is a global proxy for Ubuntu Touch. The interface starts a root helper, the helper runs mihomo, and turning the proxy off removes only this program's policy rules.
 
 The program is free software under GPL-3.0-or-later. See `LICENSE`.
+
+## Screenshots
+
+<p align="center">
+  <img src="https://i.imgur.com/DgPDeUN.png" alt="Home" width="240">
+  <img src="https://i.imgur.com/pu1P84D.png" alt="Node editor" width="240">
+</p>
 
 ## Binaries
 

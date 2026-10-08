@@ -1,8 +1,19 @@
 # Rayut
 
+<p align="center">
+  <img src="app/assets/logo.svg" alt="Rayut" width="96">
+</p>
+
 Rayut 是 Ubuntu Touch 上的全局代理。界面启动一个以 root 运行的助手，助手运行 mihomo。关闭代理时，只删除本程序自己的策略规则。
 
 本程序是自由软件，许可证是 GPL-3.0-or-later。全文见 `LICENSE`。
+
+## 截图
+
+<p align="center">
+  <img src="https://i.imgur.com/DgPDeUN.png" alt="首页" width="240">
+  <img src="https://i.imgur.com/pu1P84D.png" alt="节点编辑" width="240">
+</p>
 
 ## 二进制
 
