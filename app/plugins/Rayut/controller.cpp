@@ -470,6 +470,35 @@ bool Controller::coreBusy() const
     return m_coreBusy;
 }
 
+QString Controller::appVersion() const
+{
+    return QString::fromLatin1(kAppVersion);
+}
+
+QString Controller::noticeText(const QString &name) const
+{
+    static const QStringList allowed = {
+        QStringLiteral("licenses.en.txt"),
+        QStringLiteral("licenses.zh.txt"),
+        QStringLiteral("components.en.txt"),
+        QStringLiteral("components.zh.txt"),
+        QStringLiteral("privileges.en.txt"),
+        QStringLiteral("privileges.zh.txt"),
+        QStringLiteral("gpl-3.0.txt"),
+        QStringLiteral("qrcodegen-mit.txt"),
+        QStringLiteral("quirc-isc.txt"),
+        QStringLiteral("yaml.v3.txt"),
+    };
+    if (!allowed.contains(name) || name.contains(QLatin1String("..")) || name.contains(QLatin1Char('/'))) {
+        return QString();
+    }
+    QFile file(QStringLiteral(":/notices/") + name);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QString();
+    }
+    return QString::fromUtf8(file.readAll());
+}
+
 QString Controller::versionText() const
 {
     if (!m_helperRunning) {

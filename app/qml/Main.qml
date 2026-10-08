@@ -47,6 +47,19 @@ MainView {
         return page
     }
 
+    function noticeFile(base) {
+        var name = Qt.locale().name
+        var lang = name.indexOf("zh") === 0 ? "zh" : "en"
+        return base + "." + lang + ".txt"
+    }
+
+    function openNotice(title, fileName) {
+        var body = Controller.noticeText(fileName)
+        if (body === "")
+            body = qsTr("This text could not be opened.")
+        stack.push(noticePage, { noticeTitle: title, noticeBody: body })
+    }
+
     function acceptScan(transfer) {
         if (!transfer)
             return
@@ -342,6 +355,43 @@ MainView {
     }
 
     Component {
+        id: noticePage
+
+        Page {
+            property string noticeTitle: ""
+            property string noticeBody: ""
+
+            header: PageHeader {
+                id: noticeHeader
+                title: noticeTitle
+            }
+
+            Flickable {
+                id: noticeFlick
+                anchors {
+                    top: noticeHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                contentWidth: width
+                contentHeight: noticeLabel.height + units.gu(4)
+                clip: true
+
+                Label {
+                    id: noticeLabel
+                    width: noticeFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    wrapMode: Text.Wrap
+                    textFormat: Text.PlainText
+                    text: noticeBody
+                }
+            }
+        }
+    }
+
+    Component {
         id: aboutPage
 
         Page {
@@ -350,25 +400,83 @@ MainView {
                 title: qsTr("About")
             }
 
-            Column {
+            Flickable {
+                id: aboutFlick
                 anchors {
                     top: aboutHeader.bottom
                     left: parent.left
                     right: parent.right
-                    margins: units.gu(2)
+                    bottom: parent.bottom
                 }
-                spacing: units.gu(2)
+                contentHeight: aboutColumn.height + units.gu(4)
+                clip: true
 
-                Label {
-                    width: parent.width
-                    wrapMode: Text.Wrap
-                    text: Controller.versionText
-                }
+                Column {
+                    id: aboutColumn
+                    width: aboutFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(2)
 
-                Label {
-                    width: parent.width
-                    wrapMode: Text.Wrap
-                    text: qsTr("Devices on this phone's hotspot are not proxied. A computer using this phone over USB is not proxied. A Wi-Fi portal that needs a web sign-in may not open while the proxy is on.")
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: qsTr("Rayut %1").arg(Controller.appVersion)
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: Controller.versionText
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: qsTr("Devices on this phone's hotspot are not proxied. A computer using this phone over USB is not proxied. A Wi-Fi portal that needs a web sign-in may not open while the proxy is on.")
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("Licenses")
+                        onClicked: root.openNotice(qsTr("Licenses"), root.noticeFile("licenses"))
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("Components")
+                        onClicked: root.openNotice(qsTr("Components"), root.noticeFile("components"))
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("Privileges")
+                        onClicked: root.openNotice(qsTr("Privileges"), root.noticeFile("privileges"))
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("GNU GPL")
+                        onClicked: root.openNotice(qsTr("GNU GPL"), "gpl-3.0.txt")
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("QR Code generator license")
+                        onClicked: root.openNotice(qsTr("QR Code generator license"), "qrcodegen-mit.txt")
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("quirc license")
+                        onClicked: root.openNotice(qsTr("quirc license"), "quirc-isc.txt")
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: qsTr("yaml.v3 license")
+                        onClicked: root.openNotice(qsTr("yaml.v3 license"), "yaml.v3.txt")
+                    }
                 }
             }
         }

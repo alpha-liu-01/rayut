@@ -1,0 +1,60 @@
+Binaries in this click. Each one has a version, a license, and a source.
+
+Binary: rayut
+Version: 0.1.29
+License: GPL-3.0-or-later
+Source: https://github.com/alpha-liu-01/rayut
+
+The interface program. It is built from this repository and installed at the click root.
+
+Binary: rayutd
+Version: 0.1.29
+License: GPL-3.0-or-later
+Source: https://github.com/alpha-liu-01/rayut
+
+The root helper. It is built from daemon/ in the same repository and installed at bin/rayutd. Its API version is 1.
+
+Binary: mihomo
+Version: v1.19.32
+License: GPL-3.0
+Source: https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+
+Official linux-arm64 archive:
+https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz
+Archive SHA-256: 9dd862e28b46ff7d775f169cceebc28deccaa0a9e804237d421cd2571e0caba0
+License file: https://raw.githubusercontent.com/MetaCubeX/mihomo/v1.19.32/LICENSE
+License SHA-256: 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+
+The click installs this binary at bin/mihomo. A copy accepted by the in-app installer lives in the data directory as core/mihomo and is preferred on the next start. There is no latest channel.
+
+Go module linked into rayutd. This is not a separate binary.
+
+Module: gopkg.in/yaml.v3
+Version: v3.0.1
+License: MIT and Apache-2.0
+Source: https://github.com/go-yaml/yaml
+
+The MIT text covers the files ported from libyaml. The other files are Apache-2.0, Copyright (c) 2011-2019 Canonical Ltd. The full text shipped with that module is on the about page under yaml.v3 license. Recorded in daemon/go.mod and daemon/go.sum.
+
+Click packaging template. This is not a binary inside the click.
+
+Template: Clickable CMake
+Version: clickable 8.8.0 or newer, framework ubuntu-sdk-20.04
+License: GPL-3.0
+Source: https://gitlab.com/clickable/clickable
+
+The click is built with the Clickable CMake template for that framework. Clickable itself is a build tool and is not installed on the phone. The packaging files in this repository are part of Rayut.
+
+Libraries compiled into the interface. These are not separate binaries.
+
+Library: quirc
+Version: 1.0
+License: ISC
+Source: https://github.com/dlbeer/quirc
+
+Library: QR Code generator library (C)
+Version: no version number in the vendored files
+License: MIT
+Source: https://github.com/nayuki/QR-Code-generator
+
+The phone supplies Qt 5 and the Lomiri toolkit. They are not files in this click.

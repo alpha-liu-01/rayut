@@ -1,0 +1,37 @@
+Rayut
+Version: 0.1.29
+License: GPL-3.0-or-later
+Source: https://github.com/alpha-liu-01/rayut
+
+Rayut is free software. You can redistribute it and change it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. The full license text is on the about page under GNU GPL.
+
+mihomo
+Version: v1.19.32
+License: GPL-3.0
+Source: https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+Copyright: MetaCubeX and contributors
+
+The click ships the official linux-arm64 build of that tag. The license checked at install time is the LICENSE file at that tag.
+
+v2rayNG
+License: GPL-3.0
+Source: https://github.com/2dust/v2rayNG
+Copyright: 2dust and contributors
+
+The home screen arrangement (side menu, group pages, and node rows) follows v2rayNG. This package does not include v2rayNG source files.
+
+QR Code generator library (C)
+License: MIT
+Source: https://github.com/nayuki/QR-Code-generator
+Copyright: (c) Project Nayuki
+https://www.nayuki.io/page/qr-code-generator-library
+
+The C sources are vendored in app/third_party/qrcodegen. Those files do not carry a separate version number. The full MIT text is on the about page.
+
+quirc
+Version: 1.0
+License: ISC
+Source: https://github.com/dlbeer/quirc
+Copyright: (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>
+
+quirc_version() in the vendored copy returns 1.0. The sources are in app/third_party/quirc. The full ISC text is on the about page.

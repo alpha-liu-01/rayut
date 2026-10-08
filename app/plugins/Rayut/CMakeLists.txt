@@ -6,6 +6,8 @@ find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5Network REQUIRED)
 
+qt5_add_resources(NOTICE_RESOURCES notices.qrc)
+
 add_library(${PLUGIN} MODULE
     controller.cpp
     plugin.cpp
@@ -16,6 +18,7 @@ add_library(${PLUGIN} MODULE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/decode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/identify.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/version_db.c
+    ${NOTICE_RESOURCES}
 )
 target_include_directories(${PLUGIN} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc

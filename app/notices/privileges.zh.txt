@@ -1,0 +1,29 @@
+这个 Click 使用 rayut.apparmor 里的 unconfined 模板。受限制的 Click 不能创建本程序用的 TUN 设备，也不能改策略路由。所以助手以 root 运行，由界面把它启动起来。
+
+这个安装包不安装 sudoers 文件。界面只启动一个 root 程序，参数是固定的：
+
+/usr/bin/sudo -S -p '' -- <application directory>/bin/rayutd --session
+
+密码输入认证框。认证框交给系统认证服务核对。同一份密码接着写进这个 sudo -S 进程的标准输入，后面跟一个换行。写完后缓冲区会被覆盖。密码不保存，也不写入日志。
+
+sudo 返回之后，rayutd 是 root 进程。它只执行这些命令：
+
+ip rule show
+ip -6 rule show
+ip rule del pref <priority>
+ip -6 rule del pref <priority>
+ip route flush table 2022
+ip -6 route flush table 2022
+ip -6 route show table 2022
+ip -6 neigh replace <address> dev Meta nud permanent
+ip -o link show
+getent passwd <name>
+<mihomo> -v
+<mihomo> -t -d <check directory> -f <config>
+<mihomo> -d <runtime directory> -f <config>
+
+<mihomo> 是 <application directory>/bin/mihomo；数据目录里的 core/mihomo 如果是普通文件，则用那一份。rayutd 还会用同一个 --session 参数再启动自己的一个子进程，以便助手离开应用的 cgroup。出于同一原因，它把自己的 pid 和核心的 pid 写进上一层的 cgroup.procs。
+
+关闭代理会做恢复。助手退出时也会做恢复。恢复只删除优先级为 9000、9001、9002 或 9010，并且规则文本是下面之一的策略规则：lookup 2022、iif Meta、suppress_prefixlength 0、goto 9010、from all nop。这些优先级上文本不同的规则会留下来。然后执行上面两条 flush，只清空路由表 2022。不清空主路由表。不执行 iptables -F。不清空 nftables。
+
+如果断开即拦截开着，并且核心进程消失，这些规则会留到你关闭代理。关闭时仍走同一套恢复。

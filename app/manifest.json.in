@@ -1,6 +1,6 @@
 {
     "name": "rayut.rayut",
-    "description": "Session helper switch for the Rayut device probe",
+    "description": "Global proxy for Ubuntu Touch",
     "architecture": "$ENV{ARCH}",
     "title": "Rayut",
     "hooks": {

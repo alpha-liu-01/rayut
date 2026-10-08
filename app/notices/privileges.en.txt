@@ -1,0 +1,29 @@
+The click uses the unconfined AppArmor template in rayut.apparmor. A confined click cannot create the TUN device this program uses, and it cannot change policy routing. The helper therefore runs as root, and the interface is the process that starts it.
+
+This package does not install a sudoers file. The interface starts only one root program, with fixed arguments:
+
+/usr/bin/sudo -S -p '' -- <application directory>/bin/rayutd --session
+
+The password is typed into the authentication dialog. The dialog asks the system authentication service to check it. The same password is then written to the standard input of that sudo -S process, followed by a newline. The buffer is overwritten after the write. The password is not stored and is not written to the log.
+
+After sudo returns, rayutd is the root process. It executes only these commands:
+
+ip rule show
+ip -6 rule show
+ip rule del pref <priority>
+ip -6 rule del pref <priority>
+ip route flush table 2022
+ip -6 route flush table 2022
+ip -6 route show table 2022
+ip -6 neigh replace <address> dev Meta nud permanent
+ip -o link show
+getent passwd <name>
+<mihomo> -v
+<mihomo> -t -d <check directory> -f <config>
+<mihomo> -d <runtime directory> -f <config>
+
+<mihomo> is <application directory>/bin/mihomo, or the data-directory copy at core/mihomo when that copy is a regular file. rayutd also starts one child of itself with the same --session argument so the helper can leave the application cgroup. It writes its own pid, and the core's pid, into a parent cgroup.procs file for the same reason.
+
+Turning the proxy off runs recovery. The helper exiting also runs recovery. Recovery deletes a policy rule only when its priority is 9000, 9001, 9002, or 9010 and the rule text is one of: lookup 2022, iif Meta, suppress_prefixlength 0, goto 9010, or from all nop. A rule at those priorities with different text is left in place. Recovery then runs the two flush commands above, which clear routing table 2022 only. It does not flush the main routing table. It does not run iptables -F. It does not flush nftables.
+
+If the kill switch is on and the core process disappears, those rules stay until you turn the proxy off. Turning it off still runs the same recovery.

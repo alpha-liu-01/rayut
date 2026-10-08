@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Rayut
+Comment=Global proxy for Ubuntu Touch
 Exec=rayut
 Icon=assets/logo.svg
 Terminal=false

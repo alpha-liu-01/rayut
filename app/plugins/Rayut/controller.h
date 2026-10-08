@@ -50,6 +50,7 @@ class Controller : public QObject {
     Q_PROPERTY(QString profileText READ profileText NOTIFY stateChanged)
     Q_PROPERTY(QString ruleTemplate READ ruleTemplate NOTIFY stateChanged)
     Q_PROPERTY(QString versionText READ versionText NOTIFY stateChanged)
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
     Q_PROPERTY(QVariantList coreReleases READ coreReleases NOTIFY stateChanged)
     Q_PROPERTY(QString corePlace READ corePlace NOTIFY stateChanged)
     Q_PROPERTY(QString coreTag READ coreTag NOTIFY stateChanged)
@@ -98,6 +99,7 @@ public:
     QString profileText() const;
     QString ruleTemplate() const;
     QString versionText() const;
+    QString appVersion() const;
     QVariantList coreReleases() const;
     QString corePlace() const;
     QString coreTag() const;
@@ -131,6 +133,7 @@ public:
     int editFocusColumn() const;
     QVariantList editProxies() const;
 
+    Q_INVOKABLE QString noticeText(const QString &name) const;
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void startHelper(QString password);
     Q_INVOKABLE void enableTun();

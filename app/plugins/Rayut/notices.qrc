@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/notices">
+        <file alias="licenses.en.txt">../../notices/licenses.en.txt</file>
+        <file alias="licenses.zh.txt">../../notices/licenses.zh.txt</file>
+        <file alias="components.en.txt">../../notices/components.en.txt</file>
+        <file alias="components.zh.txt">../../notices/components.zh.txt</file>
+        <file alias="privileges.en.txt">../../notices/privileges.en.txt</file>
+        <file alias="privileges.zh.txt">../../notices/privileges.zh.txt</file>
+        <file alias="gpl-3.0.txt">../../notices/gpl-3.0.txt</file>
+        <file alias="qrcodegen-mit.txt">../../third_party/qrcodegen/LICENSE</file>
+        <file alias="quirc-isc.txt">../../third_party/quirc/LICENSE</file>
+        <file alias="yaml.v3.txt">../../notices/yaml.v3.LICENSE</file>
+    </qresource>
+</RCC>

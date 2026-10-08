@@ -1,0 +1,37 @@
+Rayut
+版本：0.1.29
+许可证：GPL-3.0-or-later
+来源：https://github.com/alpha-liu-01/rayut
+
+Rayut 是自由软件。你可以在自由软件基金会发布的 GNU 通用公共许可证第 3 版或（依你的选择）任何后续版本的条款下再发布和修改它。许可证全文在关于页的 GNU GPL 一项里，原文是英文。
+
+mihomo
+版本：v1.19.32
+许可证：GPL-3.0
+来源：https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+版权：MetaCubeX 及贡献者
+
+安装包带的是这个 tag 的官方 linux-arm64 构建。安装时核对的许可证是该 tag 的 LICENSE 文件。
+
+v2rayNG
+许可证：GPL-3.0
+来源：https://github.com/2dust/v2rayNG
+版权：2dust 及贡献者
+
+首页的排布（侧面菜单、分组页、节点行）参照 v2rayNG。这个安装包不包含 v2rayNG 的源码文件。
+
+QR Code generator library (C)
+许可证：MIT
+来源：https://github.com/nayuki/QR-Code-generator
+版权：(c) Project Nayuki
+https://www.nayuki.io/page/qr-code-generator-library
+
+C 源码放在 app/third_party/qrcodegen。这些文件没有单独的版本号。MIT 全文在关于页，原文是英文。
+
+quirc
+版本：1.0
+许可证：ISC
+来源：https://github.com/dlbeer/quirc
+版权：(C) 2010-2012 Daniel Beer <dlbeer@gmail.com>
+
+随包副本里的 quirc_version() 返回 1.0。源码在 app/third_party/quirc。ISC 全文在关于页，原文是英文。

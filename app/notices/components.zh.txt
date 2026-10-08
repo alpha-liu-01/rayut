@@ -1,0 +1,60 @@
+这个安装包里的二进制。每一份都有版本、许可证和来源。
+
+二进制：rayut
+版本：0.1.29
+许可证：GPL-3.0-or-later
+来源：https://github.com/alpha-liu-01/rayut
+
+界面程序。由本仓库构建，装在 Click 根目录。
+
+二进制：rayutd
+版本：0.1.29
+许可证：GPL-3.0-or-later
+来源：https://github.com/alpha-liu-01/rayut
+
+根权限助手。由同一仓库的 daemon/ 构建，装在 bin/rayutd。API 版本是 1。
+
+二进制：mihomo
+版本：v1.19.32
+许可证：GPL-3.0
+来源：https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+
+官方 linux-arm64 压缩包：
+https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz
+压缩包 SHA-256：9dd862e28b46ff7d775f169cceebc28deccaa0a9e804237d421cd2571e0caba0
+许可证文件：https://raw.githubusercontent.com/MetaCubeX/mihomo/v1.19.32/LICENSE
+许可证 SHA-256：3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+
+安装包把这个二进制放在 bin/mihomo。应用内安装接受的副本在数据目录 core/mihomo，下次启动优先用它。没有 latest 通道。
+
+链进 rayutd 的 Go 模块。这不是单独的二进制。
+
+模块：gopkg.in/yaml.v3
+版本：v3.0.1
+许可证：MIT and Apache-2.0
+来源：https://github.com/go-yaml/yaml
+
+从 libyaml 移植的文件用 MIT。其余文件是 Apache-2.0，版权 (c) 2011-2019 Canonical Ltd。该模块附带的全文在关于页的 yaml.v3 许可证一项。记录在 daemon/go.mod 和 daemon/go.sum。
+
+Click 打包模板。这不是安装包里的二进制。
+
+模板：Clickable CMake
+版本：clickable 8.8.0 或更新，框架 ubuntu-sdk-20.04
+许可证：GPL-3.0
+来源：https://gitlab.com/clickable/clickable
+
+这个 Click 用该框架的 Clickable CMake 模板构建。Clickable 本身是构建工具，不装到手机上。本仓库里的打包文件属于 Rayut。
+
+编译进界面的库。这些不是单独的二进制。
+
+库：quirc
+版本：1.0
+许可证：ISC
+来源：https://github.com/dlbeer/quirc
+
+库：QR Code generator library (C)
+版本：随包文件里没有单独的版本号
+许可证：MIT
+来源：https://github.com/nayuki/QR-Code-generator
+
+手机系统提供 Qt 5 和 Lomiri 工具包。它们不是这个 Click 里的文件。
