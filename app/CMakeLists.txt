@@ -26,4 +26,29 @@ add_executable(${PROJECT_NAME} main.cpp ${QT_RESOURCES})
 target_link_libraries(${PROJECT_NAME} Qt5::Gui Qt5::Qml Qt5::Quick Qt5::QuickControls2)
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX})
 
+# Any translations/rayut_<locale>.ts is a language. rayut.ts is the empty template and is not installed.
+file(GLOB RAYUT_TRANSLATIONS "${CMAKE_CURRENT_SOURCE_DIR}/translations/rayut_*.ts")
+find_program(LRELEASE_EXECUTABLE NAMES lrelease lrelease-qt5)
+if(LRELEASE_EXECUTABLE AND RAYUT_TRANSLATIONS)
+    set(RAYUT_QM "")
+    foreach(ts ${RAYUT_TRANSLATIONS})
+        get_filename_component(RAYUT_TS_NAME "${ts}" NAME_WE)
+        set(qm "${CMAKE_CURRENT_BINARY_DIR}/${RAYUT_TS_NAME}.qm")
+        add_custom_command(
+            OUTPUT "${qm}"
+            COMMAND "${LRELEASE_EXECUTABLE}" "${ts}" -qm "${qm}"
+            DEPENDS "${ts}"
+            VERBATIM)
+        list(APPEND RAYUT_QM "${qm}")
+    endforeach()
+    add_custom_target(rayut_translations ALL DEPENDS ${RAYUT_QM})
+    install(FILES ${RAYUT_QM} DESTINATION translations)
+else()
+    file(GLOB RAYUT_QM "${CMAKE_CURRENT_SOURCE_DIR}/translations/rayut_*.qm")
+    if(NOT RAYUT_QM)
+        message(FATAL_ERROR "No translations/rayut_*.qm and lrelease was not found")
+    endif()
+    install(FILES ${RAYUT_QM} DESTINATION translations)
+endif()
+
 add_subdirectory(plugins/Rayut)

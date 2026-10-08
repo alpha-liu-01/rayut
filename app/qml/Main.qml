@@ -29,6 +29,24 @@ MainView {
     property int pendingEditorIndex: -1
     property bool pendingEditorCard: false
 
+    function drawerLabel(page) {
+        if (page === "settings")
+            return qsTr("Settings")
+        if (page === "core")
+            return qsTr("Core")
+        if (page === "groups")
+            return qsTr("Subscription groups")
+        if (page === "rules")
+            return qsTr("Rule templates")
+        if (page === "editor")
+            return qsTr("Edit configuration")
+        if (page === "session")
+            return qsTr("Log and connections")
+        if (page === "about")
+            return qsTr("About")
+        return page
+    }
+
     function acceptScan(transfer) {
         if (!transfer)
             return
@@ -46,7 +64,7 @@ MainView {
         var count = transfer.items ? transfer.items.length : 0
         if (count < 1) {
             scanAction.hasImage = false
-            root.scanHint = "无法识别的图片"
+            root.scanHint = qsTr("Could not read that picture")
             scanAction.start()
             return
         }
@@ -84,7 +102,7 @@ MainView {
             }
             var entered = item.takePassword()
             if (!pam.validatePasswordToken(entered)) {
-                item.showFailure("Authentication failed")
+                item.showFailure(qsTr("Authentication failed"))
                 return
             }
             root.authDialogItem = null
@@ -98,8 +116,8 @@ MainView {
 
         Dialog {
             id: dialog
-            title: "Authentication required"
-            text: "Enter passcode or passphrase:"
+            title: qsTr("Authentication required")
+            text: qsTr("Enter passcode or passphrase:")
 
             function takePassword() {
                 var entered = passwordField.text
@@ -123,7 +141,7 @@ MainView {
 
             TextField {
                 id: passwordField
-                placeholderText: "passcode or passphrase"
+                placeholderText: qsTr("passcode or passphrase")
                 echoMode: TextInput.Password
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
                 onAccepted: dialog.schedule("submit")
@@ -137,13 +155,13 @@ MainView {
             }
 
             Button {
-                text: "Authenticate"
+                text: qsTr("Authenticate")
                 color: theme.palette.normal.positive
                 onClicked: dialog.schedule("submit")
             }
 
             Button {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 onClicked: dialog.schedule("cancel")
             }
 
@@ -170,7 +188,7 @@ MainView {
                 }
             }
             root.scanHold = false
-            root.scanHint = "没有相机"
+            root.scanHint = qsTr("No camera")
         }
     }
 
@@ -246,7 +264,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: settingsHeader
-                title: "设置"
+                title: qsTr("Settings")
             }
 
             Flickable {
@@ -275,7 +293,7 @@ MainView {
                             height: settingsKill.height
                             verticalAlignment: Text.AlignVCenter
                             wrapMode: Text.Wrap
-                            text: "断开即拦截"
+                            text: qsTr("Block when disconnected")
                         }
 
                         Switch {
@@ -294,7 +312,7 @@ MainView {
                             height: settingsLan.height
                             verticalAlignment: Text.AlignVCenter
                             wrapMode: Text.Wrap
-                            text: "局域网共享"
+                            text: qsTr("Share on the LAN")
                         }
 
                         Switch {
@@ -307,14 +325,16 @@ MainView {
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
+                        text: Controller.allowLan
+                              ? qsTr("Devices on this LAN can connect to port %1.").arg(Controller.lanPort)
+                              : qsTr("Port %1 stays on this phone.").arg(Controller.lanPort)
                     }
 
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
                         color: theme.palette.normal.backgroundText
-                        text: "热点和 USB 共享出去的设备不走代理。要登录 Wi-Fi 门户时，先关闭代理。"
+                        text: qsTr("Devices on the hotspot or USB share do not use the proxy. To sign in to a Wi-Fi portal, turn the proxy off first.")
                     }
                 }
             }
@@ -327,7 +347,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: aboutHeader
-                title: "关于"
+                title: qsTr("About")
             }
 
             Column {
@@ -348,7 +368,7 @@ MainView {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: "连到本机热点的设备不经过代理。通过 USB 使用本机网络的电脑不经过代理。代理开着时，需要网页登录的 Wi-Fi 门户可能打不开。"
+                    text: qsTr("Devices on this phone's hotspot are not proxied. A computer using this phone over USB is not proxied. A Wi-Fi portal that needs a web sign-in may not open while the proxy is on.")
                 }
             }
         }
@@ -360,7 +380,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: sessionHeader
-                title: "日志"
+                title: qsTr("Log")
             }
 
             Timer {
@@ -390,13 +410,13 @@ MainView {
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: Controller.helperRunning ? "" : "请先在首页连接"
+                        text: Controller.helperRunning ? "" : qsTr("Connect from the home page first")
                         visible: text !== ""
                     }
 
                     Label {
                         width: parent.width
-                        text: "连接"
+                        text: qsTr("Connections")
                         font.bold: true
                     }
 
@@ -404,7 +424,7 @@ MainView {
                         width: parent.width
                         wrapMode: Text.Wrap
                         visible: Controller.helperRunning && Controller.sessionConnections.length === 0
-                        text: "这次会话还没有连接"
+                        text: qsTr("This session has no connections yet")
                     }
 
                     Repeater {
@@ -412,13 +432,13 @@ MainView {
                         delegate: Label {
                             width: sessionColumn.width
                             wrapMode: Text.Wrap
-                            text: modelData.destination + "\n" + modelData.rule + " · " + modelData.chain + "\n上传 " + modelData.upload + " · 下载 " + modelData.download
+                            text: modelData.destination + "\n" + modelData.rule + " · " + modelData.chain + "\n" + qsTr("Upload %1 · Download %2").arg(modelData.upload).arg(modelData.download)
                         }
                     }
 
                     Label {
                         width: parent.width
-                        text: "日志"
+                        text: qsTr("Log")
                         font.bold: true
                     }
 
@@ -426,7 +446,7 @@ MainView {
                         width: parent.width
                         wrapMode: Text.Wrap
                         visible: Controller.helperRunning && Controller.sessionLogs.length === 0
-                        text: "这次会话还没有日志"
+                        text: qsTr("This session has no log yet")
                     }
 
                     Repeater {
@@ -440,7 +460,7 @@ MainView {
 
                     Button {
                         width: parent.width
-                        text: "刷新"
+                        text: qsTr("Refresh")
                         enabled: Controller.helperRunning
                         onClicked: sessionLoad.start()
                     }
@@ -464,7 +484,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: profileHeader
-                title: "规则模板"
+                title: qsTr("Rule templates")
             }
 
             Timer {
@@ -495,12 +515,12 @@ MainView {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning ? "请先关闭代理" : "规则作用在正在查看的组上。"
+                        text: Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning ? qsTr("Turn the proxy off first") : qsTr("Rules apply to the group you are viewing.")
                     }
 
                     Button {
                         Layout.fillWidth: true
-                        text: "全局代理"
+                        text: qsTr("Global proxy")
                         enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "global" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
@@ -511,7 +531,7 @@ MainView {
 
                     Button {
                         Layout.fillWidth: true
-                        text: "绕过局域网"
+                        text: qsTr("Bypass LAN")
                         enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "lan" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
@@ -522,7 +542,7 @@ MainView {
 
                     Button {
                         Layout.fillWidth: true
-                        text: "绕过局域网和中国大陆"
+                        text: qsTr("Bypass LAN and mainland China")
                         enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "lan-china" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
@@ -562,7 +582,7 @@ MainView {
 
             header: PageHeader {
                 id: editHeader
-                title: editorRoot.mode === "text" ? "配置编辑" : "节点"
+                title: editorRoot.mode === "text" ? qsTr("Edit configuration") : qsTr("Nodes")
             }
 
             function openForm(row) {
@@ -575,7 +595,7 @@ MainView {
                 tlsSwitch.checked = row.tls
                 udpSwitch.checked = row.udp
                 secretField.text = ""
-                secretField.placeholderText = row.hasSecret ? "已有密钥，留空则不修改" : "密钥，可留空"
+                secretField.placeholderText = row.hasSecret ? qsTr("A secret is already set. Leave this empty to keep it.") : qsTr("Secret, may be left empty")
                 editorRoot.mode = "form"
             }
 
@@ -724,14 +744,14 @@ MainView {
 
                     Button {
                         width: parent.width
-                        text: "保存"
+                        text: qsTr("Save")
                         enabled: Controller.helperRunning && !Controller.versionMismatch && lineView.count > 0
                         onClicked: saveEdit.start()
                     }
 
                     Button {
                         width: parent.width
-                        text: "节点"
+                        text: qsTr("Nodes")
                         enabled: Controller.helperRunning && lineView.count > 0
                         onClicked: openNodes.start()
                     }
@@ -739,7 +759,7 @@ MainView {
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: "保存前会校验。正在使用的组要先关闭代理才能改。"
+                        text: qsTr("The profile is checked before saving. Turn the proxy off before changing the group in use.")
                     }
 
                     Label {
@@ -770,7 +790,7 @@ MainView {
                         width: parent.width
                         wrapMode: Text.Wrap
                         visible: Controller.editProxies.length === 0
-                        text: "这份配置没有内联节点，请用文本编辑。"
+                        text: qsTr("This profile has no inline nodes. Edit it as text.")
                     }
 
                     Repeater {
@@ -788,7 +808,7 @@ MainView {
                                 tlsSwitch.checked = modelData.tls
                                 udpSwitch.checked = modelData.udp
                                 secretField.text = ""
-                                secretField.placeholderText = modelData.hasSecret ? "已有密钥，留空则不修改" : "密钥，可留空"
+                                secretField.placeholderText = modelData.hasSecret ? qsTr("A secret is already set. Leave this empty to keep it.") : qsTr("Secret, may be left empty")
                                 editorRoot.mode = "form"
                             }
                         }
@@ -796,7 +816,7 @@ MainView {
 
                     Button {
                         width: parent.width
-                        text: "返回文本"
+                        text: qsTr("Back to text")
                         onClicked: editorRoot.mode = "text"
                     }
 
@@ -819,35 +839,35 @@ MainView {
                     TextField {
                         id: nameField
                         width: parent.width
-                        placeholderText: "节点名"
+                        placeholderText: qsTr("Node name")
                         inputMethodHints: Qt.ImhNoPredictiveText
                     }
 
                     TextField {
                         id: typeField
                         width: parent.width
-                        placeholderText: "类型"
+                        placeholderText: qsTr("Type")
                         inputMethodHints: Qt.ImhNoPredictiveText
                     }
 
                     TextField {
                         id: serverField
                         width: parent.width
-                        placeholderText: "服务器"
+                        placeholderText: qsTr("Server")
                         inputMethodHints: Qt.ImhNoPredictiveText
                     }
 
                     TextField {
                         id: portField
                         width: parent.width
-                        placeholderText: "端口"
+                        placeholderText: qsTr("Port")
                         inputMethodHints: Qt.ImhDigitsOnly
                     }
 
                     TextField {
                         id: networkField
                         width: parent.width
-                        placeholderText: "网络，例如 tcp 或 ws"
+                        placeholderText: qsTr("Network, for example tcp or ws")
                         inputMethodHints: Qt.ImhNoPredictiveText
                     }
 
@@ -876,19 +896,19 @@ MainView {
                         id: secretField
                         width: parent.width
                         echoMode: TextInput.Password
-                        placeholderText: "密钥，可留空"
+                        placeholderText: qsTr("Secret, may be left empty")
                         inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
                     }
 
                     Button {
                         width: parent.width
-                        text: editorRoot.card ? "保存" : "写回文本"
+                        text: editorRoot.card ? qsTr("Save") : qsTr("Write back to text")
                         onClicked: writeNode.start()
                     }
 
                     Button {
                         width: parent.width
-                        text: "返回节点"
+                        text: qsTr("Back to nodes")
                         onClicked: {
                             secretField.text = ""
                             editorRoot.mode = "nodes"
@@ -898,7 +918,7 @@ MainView {
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: "留空密钥会保留原来的密钥。这里不显示原密钥。"
+                        text: qsTr("Leaving the secret empty keeps the old one. The old secret is not shown here.")
                     }
 
                     Label {
@@ -921,7 +941,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: pickerHeader
-                title: "相册"
+                title: qsTr("Album")
             }
 
             ContentPeerPicker {
@@ -1046,13 +1066,13 @@ MainView {
 
                 ListModel {
                     id: drawerPages
-                    ListElement { iconName: "settings"; label: "设置"; page: "settings" }
-                    ListElement { iconName: "stock_application"; label: "核心"; page: "core" }
-                    ListElement { iconName: "view-list-symbolic"; label: "订阅分组"; page: "groups" }
-                    ListElement { iconName: "note"; label: "规则模板"; page: "rules" }
-                    ListElement { iconName: "edit"; label: "配置编辑"; page: "editor" }
-                    ListElement { iconName: "stock_document"; label: "日志和当前连接"; page: "session" }
-                    ListElement { iconName: "info"; label: "关于"; page: "about" }
+                    ListElement { iconName: "settings"; page: "settings" }
+                    ListElement { iconName: "stock_application"; page: "core" }
+                    ListElement { iconName: "view-list-symbolic"; page: "groups" }
+                    ListElement { iconName: "note"; page: "rules" }
+                    ListElement { iconName: "edit"; page: "editor" }
+                    ListElement { iconName: "stock_document"; page: "session" }
+                    ListElement { iconName: "info"; page: "about" }
                 }
 
                 Repeater {
@@ -1079,7 +1099,7 @@ MainView {
                             }
 
                             Label {
-                                text: label
+                                text: root.drawerLabel(page)
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                         }

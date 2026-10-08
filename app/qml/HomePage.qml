@@ -50,7 +50,7 @@ Page {
         if (n > 0)
             return n + " ms"
         if (n < 0)
-            return "失败"
+            return qsTr("Failed")
         return ""
     }
 
@@ -148,7 +148,7 @@ Page {
         leadingActionBar.actions: [
             Action {
                 iconName: "navigation-menu"
-                text: "菜单"
+                text: qsTr("Menu")
                 onTriggered: homeRoot.openDrawer()
             }
         ]
@@ -158,7 +158,7 @@ Page {
             actions: [
                 Action {
                     iconName: "search"
-                    text: "搜索"
+                    text: qsTr("Search")
                     onTriggered: {
                         if (homeRoot.searching) {
                             homeRoot.leaveSearch()
@@ -172,12 +172,12 @@ Page {
                 },
                 Action {
                     iconName: "add"
-                    text: "添加"
+                    text: qsTr("Add")
                     onTriggered: PopupUtils.open(addMenu, header)
                 },
                 Action {
                     iconName: "contextual-menu"
-                    text: "更多"
+                    text: qsTr("More")
                     onTriggered: PopupUtils.open(moreMenu, header)
                 }
             ]
@@ -189,7 +189,7 @@ Page {
         visible: false
         width: parent ? parent.width : units.gu(24)
         height: units.gu(4)
-        placeholderText: "节点名"
+        placeholderText: qsTr("Node name")
         inputMethodHints: Qt.ImhNoPredictiveText
         onTextChanged: homeRoot.filterText = text
         onAccepted: focus = false
@@ -275,7 +275,7 @@ Page {
             Layout.fillWidth: true
             Layout.margins: units.gu(1)
             visible: Controller.viewedGroup !== "" && Controller.viewedGroup !== Controller.activeGroup
-            text: Controller.tunRunning ? "请先关闭代理" : "使用本组"
+            text: Controller.tunRunning ? qsTr("Turn the proxy off first") : qsTr("Use this group")
             onClicked: homeRoot.queue("use")
         }
 
@@ -505,7 +505,7 @@ Page {
                         AbstractButton {
                             width: units.gu(3.5)
                             height: units.gu(4)
-                            Accessible.name: "测延迟"
+                            Accessible.name: qsTr("Test delay")
                             onClicked: homeRoot.queue("delay", modelData.name, modelData.index)
 
                             Icon {
@@ -520,7 +520,7 @@ Page {
                             width: units.gu(3.5)
                             height: units.gu(4)
                             visible: modelData.index >= 0
-                            Accessible.name: "编辑"
+                            Accessible.name: qsTr("Edit")
                             onClicked: homeRoot.editNode(modelData.index)
 
                             Icon {
@@ -535,7 +535,7 @@ Page {
                             width: units.gu(3.5)
                             height: units.gu(4)
                             visible: modelData.shareable
-                            Accessible.name: "分享"
+                            Accessible.name: qsTr("Share")
                             onClicked: homeRoot.queue("share", modelData.name, modelData.index)
 
                             Icon {
@@ -550,7 +550,7 @@ Page {
                             width: units.gu(3.5)
                             height: units.gu(4)
                             visible: modelData.index >= 0
-                            Accessible.name: "删除"
+                            Accessible.name: qsTr("Delete")
                             onClicked: {
                                 homeRoot.pendingDeleteName = modelData.name
                                 homeRoot.pendingDeleteIndex = modelData.index
@@ -597,14 +597,14 @@ Page {
                 }
                 z: 2
                 visible: Controller.delayRunning
-                text: "测速 " + Controller.delayDone + "/" + Controller.delayTotal
+                text: qsTr("Testing %1/%2").arg(Controller.delayDone).arg(Controller.delayTotal)
                 color: theme.palette.normal.backgroundText
             }
 
             Label {
                 anchors.centerIn: parent
                 visible: Controller.helperRunning && homeRoot.filteredNodes().length === 0
-                text: Controller.profileGroups.length === 0 ? "还没有分组" : "没有节点"
+                text: Controller.profileGroups.length === 0 ? qsTr("No groups yet") : qsTr("No nodes")
             }
         }
 
@@ -655,12 +655,14 @@ Page {
                         spacing: units.gu(1)
 
                         Column {
-                            width: units.gu(12)
+                            width: units.gu(16)
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: units.gu(0.4)
 
                             Label {
                                 width: parent.width
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 2
                                 elide: Text.ElideRight
                                 text: Controller.summary
                             }
@@ -669,20 +671,20 @@ Page {
                                 width: parent.width
                                 elide: Text.ElideRight
                                 color: theme.palette.normal.backgroundText
-                                text: "↑ " + homeRoot.byteText(Controller.uploadRate) + "/s"
+                                text: qsTr("↑ %1/s").arg(homeRoot.byteText(Controller.uploadRate))
                             }
 
                             Label {
                                 width: parent.width
                                 elide: Text.ElideRight
                                 color: theme.palette.normal.positive
-                                text: "↓ " + homeRoot.byteText(Controller.downloadRate) + "/s"
+                                text: qsTr("↓ %1/s").arg(homeRoot.byteText(Controller.downloadRate))
                             }
                         }
 
                         Item {
                             id: trafficChart
-                            width: parent.width - units.gu(13)
+                            width: parent.width - units.gu(17)
                             height: units.gu(4)
                             anchors.verticalCenter: parent.verticalCenter
 
@@ -727,7 +729,7 @@ Page {
                             verticalCenter: parent.verticalCenter
                             verticalCenterOffset: -units.gu(2)
                         }
-                        Accessible.name: "总开关"
+                        Accessible.name: qsTr("Main switch")
 
                         onClicked: {
                             if (!Controller.helperRunning)
@@ -781,13 +783,13 @@ Page {
 
                     Button {
                         width: (parent.width - parent.spacing) / 2
-                        text: "关闭"
+                        text: qsTr("Turn off")
                         onClicked: Controller.disableTun()
                     }
 
                     Button {
                         width: (parent.width - parent.spacing) / 2
-                        text: "重连"
+                        text: qsTr("Reconnect")
                         onClicked: Controller.enableTun()
                     }
                 }
@@ -802,27 +804,27 @@ Page {
             actions: ActionList {
                 Action {
                     iconName: "edit-paste"
-                    text: "剪贴板"
+                    text: qsTr("Clipboard")
                     onTriggered: homeRoot.queue("clip")
                 }
                 Action {
                     iconName: "stock_image"
-                    text: "相册二维码"
+                    text: qsTr("Album QR code")
                     onTriggered: homeRoot.scanAlbum()
                 }
                 Action {
                     iconName: "camera-symbolic"
-                    text: "相机二维码"
+                    text: qsTr("Camera QR code")
                     onTriggered: homeRoot.scanCamera()
                 }
                 Action {
                     iconName: "insert-link"
-                    text: "订阅链接"
+                    text: qsTr("Subscription link")
                     onTriggered: PopupUtils.open(urlDialog, homeRoot.header)
                 }
                 Action {
                     iconName: "stock_document"
-                    text: "本地 YAML"
+                    text: qsTr("Local YAML")
                     onTriggered: PopupUtils.open(yamlDialog, homeRoot.header)
                 }
                 Action {
@@ -866,31 +868,31 @@ Page {
             actions: ActionList {
                 Action {
                     iconName: "view-refresh"
-                    text: "重启代理"
+                    text: qsTr("Restart the proxy")
                     enabled: Controller.helperRunning && !Controller.versionMismatch
                     onTriggered: homeRoot.queue("restart")
                 }
                 Action {
                     iconName: "delete"
-                    text: "删除当前组里的节点"
+                    text: qsTr("Delete the nodes in this group")
                     enabled: Controller.viewedGroup !== ""
                     onTriggered: PopupUtils.open(clearDialog, homeRoot.header)
                 }
                 Action {
                     iconName: "share"
-                    text: "导出分享链接"
+                    text: qsTr("Export share links")
                     enabled: Controller.viewedGroup !== ""
                     onTriggered: homeRoot.queue("export")
                 }
                 Action {
                     iconName: "timer"
-                    text: "测试当前组延迟"
+                    text: qsTr("Test delay for this group")
                     enabled: Controller.helperRunning && Controller.viewedGroup !== ""
                     onTriggered: homeRoot.queue("testall")
                 }
                 Action {
                     iconName: "sync"
-                    text: "刷新当前订阅"
+                    text: qsTr("Refresh this subscription")
                     enabled: Controller.groupKind === "subscription"
                     onTriggered: homeRoot.queue("refresh")
                 }
@@ -903,16 +905,16 @@ Page {
 
         Dialog {
             id: urlBox
-            title: "订阅链接"
+            title: qsTr("Subscription link")
 
             TextField {
                 id: urlField
-                placeholderText: "https 订阅链接"
+                placeholderText: qsTr("https subscription link")
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
             }
 
             Button {
-                text: "导入"
+                text: qsTr("Import")
                 color: theme.palette.normal.positive
                 onClicked: {
                     var entered = urlField.text
@@ -923,7 +925,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: {
                     urlField.text = ""
                     PopupUtils.close(urlBox)
@@ -937,17 +939,17 @@ Page {
 
         Dialog {
             id: yamlBox
-            title: "本地 YAML"
+            title: qsTr("Local YAML")
 
             TextArea {
                 id: yamlField
                 height: units.gu(16)
-                placeholderText: "粘贴一份 Clash 文档或一条分享链接"
+                placeholderText: qsTr("Paste a Clash document or one share link")
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
             }
 
             Button {
-                text: "导入"
+                text: qsTr("Import")
                 color: theme.palette.normal.positive
                 onClicked: {
                     var entered = yamlField.text
@@ -958,7 +960,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: {
                     yamlField.text = ""
                     PopupUtils.close(yamlBox)
@@ -972,7 +974,7 @@ Page {
 
         Dialog {
             id: shareBox
-            title: Controller.shareImage === "" ? "导出不了" : "分享"
+            title: Controller.shareImage === "" ? qsTr("Cannot export") : qsTr("Share")
 
             Image {
                 visible: Controller.shareImage !== ""
@@ -992,7 +994,7 @@ Page {
             }
 
             Button {
-                text: "关闭"
+                text: qsTr("Close")
                 onClicked: {
                     Controller.clearShare()
                     PopupUtils.close(shareBox)
@@ -1008,11 +1010,11 @@ Page {
 
         Dialog {
             id: deleteNodeBox
-            title: "删除这个节点？"
+            title: qsTr("Delete this node?")
             text: homeRoot.pendingDeleteName
 
             Button {
-                text: "删除"
+                text: qsTr("Delete")
                 color: theme.palette.normal.negative
                 onClicked: {
                     PopupUtils.close(deleteNodeBox)
@@ -1021,7 +1023,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: PopupUtils.close(deleteNodeBox)
             }
         }
@@ -1032,11 +1034,11 @@ Page {
 
         Dialog {
             id: clearBox
-            title: "删除本组全部节点？"
-            text: "分组会留下来。"
+            title: qsTr("Delete every node in this group?")
+            text: qsTr("The group will remain.")
 
             Button {
-                text: "删除"
+                text: qsTr("Delete")
                 color: theme.palette.normal.negative
                 onClicked: {
                     PopupUtils.close(clearBox)
@@ -1045,7 +1047,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: PopupUtils.close(clearBox)
             }
         }

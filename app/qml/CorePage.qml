@@ -11,7 +11,7 @@ Page {
 
     header: PageHeader {
         id: coreHeader
-        title: "核心"
+        title: qsTr("Core")
     }
 
     Component.onCompleted: Controller.refreshCores()
@@ -38,8 +38,8 @@ Page {
                 width: parent.width
                 wrapMode: Text.Wrap
                 text: Controller.corePlace === "data"
-                      ? "已安装。下次启动使用数据目录里的 " + Controller.coreTag
-                      : "还没安装。当前启动用的是随应用带的核心"
+                      ? qsTr("Installed. The next start uses %1 from the data directory.").arg(Controller.coreTag)
+                      : qsTr("Not installed yet. Startup still uses the core shipped with the app.")
             }
 
             Label {
@@ -58,7 +58,9 @@ Page {
 
                     Label {
                         width: parent.width
-                        text: modelData.tag + (modelData.installed ? "  已在数据目录" : "")
+                        text: modelData.installed
+                              ? qsTr("%1, installed in the data directory").arg(modelData.tag)
+                              : modelData.tag
                     }
 
                     Label {
@@ -76,7 +78,7 @@ Page {
                     Button {
                         width: parent.width
                         enabled: !Controller.coreBusy
-                        text: Controller.coreBusy ? "正在校验并安装" : "安装此版本"
+                        text: Controller.coreBusy ? qsTr("Checking and installing") : qsTr("Install this version")
                         onClicked: {
                             coreRoot.pendingTag = modelData.tag
                             if (Controller.tunRunning) {
@@ -104,11 +106,11 @@ Page {
 
         Dialog {
             id: disconnectBox
-            title: "先断开再替换"
-            text: "替换核心前需要断开。旧进程还占用网络时，不会再启动第二份。"
+            title: qsTr("Disconnect before replacing")
+            text: qsTr("Disconnect before replacing. If the old process still holds the network, a second core will not be started.")
 
             Button {
-                text: "断开并安装"
+                text: qsTr("Disconnect and install")
                 onClicked: {
                     installLater.disconnectFirst = true
                     installLater.start()
@@ -117,7 +119,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: PopupUtils.close(disconnectBox)
             }
         }

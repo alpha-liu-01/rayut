@@ -80,15 +80,15 @@ QString tokenPath()
 QString ruleTemplateLabel(const QString &id)
 {
     if (id == QLatin1String("global")) {
-        return QStringLiteral("全局代理");
+        return QCoreApplication::translate("rayut", "Global proxy");
     }
     if (id == QLatin1String("lan")) {
-        return QStringLiteral("绕过局域网");
+        return QCoreApplication::translate("rayut", "Bypass LAN");
     }
     if (id == QLatin1String("lan-china")) {
-        return QStringLiteral("绕过局域网和中国大陆");
+        return QCoreApplication::translate("rayut", "Bypass LAN and mainland China");
     }
-    return QStringLiteral("配置自带");
+    return QCoreApplication::translate("rayut", "Built-in rules");
 }
 }
 
@@ -250,21 +250,21 @@ bool Controller::networkBlocked() const
 QString Controller::summary() const
 {
     if (!m_helperRunning) {
-        return QStringLiteral("助手未运行");
+        return QCoreApplication::translate("rayut", "Helper is not running");
     }
     if (m_networkBlocked) {
-        return QStringLiteral("网络已拦截，等待关闭或重连");
+        return QCoreApplication::translate("rayut", "Network is blocked, waiting to turn off or reconnect");
     }
     if (m_coreRunning && m_tunRunning) {
-        return QStringLiteral("代理打开");
+        return QCoreApplication::translate("rayut", "Proxy is on");
     }
     if (!m_coreRunning && !m_tunRunning) {
         if (m_configState == QLatin1String("missing") || m_configState == QLatin1String("error") || m_configBroken) {
-            return QStringLiteral("配置错误");
+            return QCoreApplication::translate("rayut", "Configuration error");
         }
-        return QStringLiteral("代理关闭");
+        return QCoreApplication::translate("rayut", "Proxy is off");
     }
-    return QStringLiteral("核心未运行");
+    return QCoreApplication::translate("rayut", "Core is not running");
 }
 
 QString Controller::message() const
@@ -473,12 +473,12 @@ bool Controller::coreBusy() const
 QString Controller::versionText() const
 {
     if (!m_helperRunning) {
-        return QStringLiteral("助手 — · API — · 核心 —");
+        return QCoreApplication::translate("rayut", "Helper — · API — · Core —");
     }
     if (!m_versionMismatch) {
         return m_versionText;
     }
-    return m_versionText + QStringLiteral("\n版本不一致，请重新连接");
+    return m_versionText + QLatin1Char('\n') + QCoreApplication::translate("rayut", "Version mismatch. Connect again.");
 }
 
 void Controller::setMessage(const QString &message)
@@ -568,7 +568,7 @@ void Controller::startHelper(QString password)
     if (m_helperRunning) {
         password.fill(QLatin1Char(' '));
         password.clear();
-        setMessage(QStringLiteral("助手已在运行"));
+        setMessage(QCoreApplication::translate("rayut", "Helper is already running"));
         return;
     }
 
@@ -587,7 +587,7 @@ void Controller::startHelper(QString password)
     });
     if (!process.waitForStarted(5000)) {
         secret.fill('\0');
-        setMessage(QStringLiteral("无法启动 sudo"));
+        setMessage(QCoreApplication::translate("rayut", "Could not start sudo"));
         return;
     }
     process.write(secret);
@@ -596,7 +596,7 @@ void Controller::startHelper(QString password)
     process.closeWriteChannel();
     if (!process.waitForFinished(30000)) {
         process.kill();
-        setMessage(QStringLiteral("启动超时"));
+        setMessage(QCoreApplication::translate("rayut", "Startup timed out"));
         return;
     }
     // The new helper replaces the bearer file. A token cached from the
@@ -611,13 +611,13 @@ void Controller::startHelper(QString password)
         }
         QThread::msleep(100);
     }
-    setMessage(QStringLiteral("连接失败"));
+    setMessage(QCoreApplication::translate("rayut", "Connection failed"));
 }
 
 void Controller::enableTun()
 {
     if (m_versionMismatch) {
-        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
         return;
     }
     QByteArray body;
@@ -634,7 +634,7 @@ void Controller::enableTun()
 void Controller::disableTun()
 {
     if (m_versionMismatch) {
-        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
         return;
     }
     QByteArray body;
@@ -700,11 +700,11 @@ void Controller::installCore(const QString &tag, bool disconnectFirst)
         return;
     }
     if (m_versionMismatch) {
-        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
         return;
     }
     if (disconnectFirst && (m_tunRunning || m_coreRunning)) {
-        setMessage(QStringLiteral("正在断开"));
+        setMessage(QCoreApplication::translate("rayut", "Disconnecting"));
         QByteArray body;
         if (!request(QStringLiteral("POST"), QStringLiteral("/v1/tun/disable"), QByteArray(), &body, 30000)) {
             return;
@@ -712,11 +712,11 @@ void Controller::installCore(const QString &tag, bool disconnectFirst)
         applyStatus(body);
     }
     if (m_tunRunning || m_coreRunning) {
-        setMessage(QStringLiteral("请先关闭代理"));
+        setMessage(QCoreApplication::translate("rayut", "Turn the proxy off first"));
         return;
     }
     m_coreBusy = true;
-    setMessage(QStringLiteral("正在校验并安装"));
+    setMessage(QCoreApplication::translate("rayut", "Checking and installing"));
     QJsonObject object;
     object.insert(QStringLiteral("tag"), tag);
     QByteArray body;
@@ -731,13 +731,13 @@ void Controller::installCore(const QString &tag, bool disconnectFirst)
         m_coreInstallBody.clear();
         m_coreBusy = false;
         refreshStatus();
-        setMessage(QStringLiteral("已安装"));
+        setMessage(QCoreApplication::translate("rayut", "Installed"));
     });
 }
 
 void Controller::setAllowLan(bool on)
 {
-    setMessage(QStringLiteral("正在应用"));
+    setMessage(QCoreApplication::translate("rayut", "Applying"));
     QJsonObject object;
     object.insert(QStringLiteral("enabled"), on);
     QByteArray body;
@@ -756,7 +756,7 @@ void Controller::toggleProxy()
 {
     if (!m_helperRunning || m_versionMismatch) {
         if (m_versionMismatch) {
-            setMessage(QStringLiteral("版本不一致，请重新连接"));
+            setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
         }
         return;
     }
@@ -770,9 +770,10 @@ void Controller::toggleProxy()
 void Controller::importContent(const QString &content)
 {
     QJsonObject object;
+    // Stored group name. Leave it untranslated so the same group is one row in every language.
     object.insert(QStringLiteral("name"), QStringLiteral("本地"));
     object.insert(QStringLiteral("content"), content);
-    postCatalog(QStringLiteral("/v1/groups/import-content"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已导入"), true);
+    postCatalog(QStringLiteral("/v1/groups/import-content"), QJsonDocument(object).toJson(QJsonDocument::Compact), QCoreApplication::translate("rayut", "Imported"), true);
 }
 
 static int decodeGrayImage(const QImage &image, char *out, int outCap)
@@ -811,7 +812,7 @@ void Controller::importFromImage(const QUrl &url)
     reader.setAutoTransform(true);
     const QImage image = reader.read();
     if (image.isNull() || image.width() <= 0 || image.height() <= 0) {
-        setMessage(QStringLiteral("无法识别的图片"));
+        setMessage(QCoreApplication::translate("rayut", "Could not read that picture"));
         return;
     }
     const QImage gray = image.convertToFormat(QImage::Format_Grayscale8);
@@ -832,7 +833,7 @@ void Controller::importFromImage(const QUrl &url)
         length = decodeGrayImage(fitLongest(centerFraction(gray, fraction), 1400), text.data(), text.size());
     }
     if (length <= 0) {
-        setMessage(QStringLiteral("无法识别的图片"));
+        setMessage(QCoreApplication::translate("rayut", "Could not read that picture"));
         return;
     }
     const QString value = QString::fromUtf8(text.constData(), length).trimmed();
@@ -847,7 +848,7 @@ void Controller::importURL(const QString &url)
 {
     QJsonObject object;
     object.insert(QStringLiteral("url"), url);
-    postCatalog(QStringLiteral("/v1/groups/import-url"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已导入"), true);
+    postCatalog(QStringLiteral("/v1/groups/import-url"), QJsonDocument(object).toJson(QJsonDocument::Compact), QCoreApplication::translate("rayut", "Imported"), true);
 }
 
 QString Controller::clipboardText() const
@@ -863,7 +864,7 @@ void Controller::importClipboard()
 {
     const QString text = clipboardText();
     if (text.isEmpty()) {
-        setMessage(QStringLiteral("剪贴板是空的"));
+        setMessage(QCoreApplication::translate("rayut", "The clipboard is empty"));
         return;
     }
     importContent(text);
@@ -878,7 +879,7 @@ void Controller::importClipboardScheme(const QString &scheme)
         matches = true;
     }
     if (!matches) {
-        setMessage(QStringLiteral("请先复制一条该类型的链接"));
+        setMessage(QCoreApplication::translate("rayut", "Copy a link of that type first"));
         return;
     }
     importContent(text);
@@ -937,32 +938,32 @@ void Controller::showGroup(const QString &id)
 void Controller::useGroup(const QString &id)
 {
     if (m_tunRunning) {
-        setMessage(QStringLiteral("请先关闭代理"));
+        setMessage(QCoreApplication::translate("rayut", "Turn the proxy off first"));
         return;
     }
-    postCatalog(groupPath(id, QStringLiteral("use")), QByteArrayLiteral("{}"), QStringLiteral("已切换"), true);
+    postCatalog(groupPath(id, QStringLiteral("use")), QByteArrayLiteral("{}"), QCoreApplication::translate("rayut", "Switched"), true);
 }
 
 void Controller::refreshGroup(const QString &id)
 {
-    postCatalog(groupPath(id, QStringLiteral("refresh")), QByteArrayLiteral("{}"), QStringLiteral("已刷新"), true);
+    postCatalog(groupPath(id, QStringLiteral("refresh")), QByteArrayLiteral("{}"), QCoreApplication::translate("rayut", "Refreshed"), true);
 }
 
 void Controller::deleteGroup(const QString &id)
 {
-    postCatalog(groupPath(id, QStringLiteral("delete")), QByteArrayLiteral("{}"), QStringLiteral("已删除"), true);
+    postCatalog(groupPath(id, QStringLiteral("delete")), QByteArrayLiteral("{}"), QCoreApplication::translate("rayut", "Deleted"), true);
 }
 
 void Controller::clearGroup(const QString &id)
 {
-    postNodes(groupPath(id, QStringLiteral("clear")), QByteArrayLiteral("{}"), QStringLiteral("已删除节点"));
+    postNodes(groupPath(id, QStringLiteral("clear")), QByteArrayLiteral("{}"), QCoreApplication::translate("rayut", "Nodes deleted"));
 }
 
 void Controller::deleteNode(const QString &id, int index)
 {
     QJsonObject object;
     object.insert(QStringLiteral("index"), index);
-    postNodes(groupPath(id, QStringLiteral("node-delete")), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已删除"));
+    postNodes(groupPath(id, QStringLiteral("node-delete")), QJsonDocument(object).toJson(QJsonDocument::Compact), QCoreApplication::translate("rayut", "Deleted"));
 }
 
 void Controller::showSelector(const QString &name)
@@ -986,7 +987,7 @@ void Controller::selectNode(const QString &id, const QString &group, const QStri
         return;
     }
     loadSelectors(id);
-    setMessage(QStringLiteral("已选择"));
+    setMessage(QCoreApplication::translate("rayut", "Selected"));
 }
 
 void Controller::testNode(const QString &id, const QString &name)
@@ -1047,16 +1048,16 @@ void Controller::copyExport(const QByteArray &body)
 {
     const QString text = QJsonDocument::fromJson(body).object().value(QStringLiteral("text")).toString();
     if (text.trimmed().isEmpty()) {
-        setMessage(QStringLiteral("没有可导出的分享链接"));
+        setMessage(QCoreApplication::translate("rayut", "No share link to export"));
         return;
     }
     QClipboard *clipboard = QGuiApplication::clipboard();
     if (!clipboard) {
-        setMessage(QStringLiteral("请求失败"));
+        setMessage(QCoreApplication::translate("rayut", "Request failed"));
         return;
     }
     clipboard->setText(text);
-    setMessage(QStringLiteral("已复制"));
+    setMessage(QCoreApplication::translate("rayut", "Copied"));
 }
 
 void Controller::exportGroup(const QString &id)
@@ -1103,7 +1104,7 @@ bool Controller::exportNode(const QString &id, const QString &name)
     QByteArray body;
     if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("export")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 15000)) {
         if (QString::fromUtf8(body).trimmed() == QLatin1String("not found")) {
-            showShareNote(QStringLiteral("没有存下来的分享链接"));
+            showShareNote(QCoreApplication::translate("rayut", "No saved share link"));
             return true;
         }
         clearShare();
@@ -1112,14 +1113,14 @@ bool Controller::exportNode(const QString &id, const QString &name)
     const QString text = QJsonDocument::fromJson(body).object().value(QStringLiteral("text")).toString().trimmed();
     body.fill('\0');
     if (text.isEmpty()) {
-        showShareNote(QStringLiteral("没有存下来的分享链接"));
+        showShareNote(QCoreApplication::translate("rayut", "No saved share link"));
         return true;
     }
     unsigned char *pixels = nullptr;
     const int side = rayut_encode_qr(text.toUtf8().constData(), &pixels, 8);
     if (side < 1 || !pixels) {
         free(pixels);
-        showShareNote(QStringLiteral("这条链接画不成码"));
+        showShareNote(QCoreApplication::translate("rayut", "This link cannot be drawn as a code"));
         return true;
     }
     const QImage view(pixels, side, side, side, QImage::Format_Grayscale8);
@@ -1128,13 +1129,13 @@ bool Controller::exportNode(const QString &id, const QString &name)
     QByteArray png;
     QBuffer buffer(&png);
     if (!buffer.open(QIODevice::WriteOnly) || !owned.save(&buffer, "PNG")) {
-        showShareNote(QStringLiteral("这条链接画不成码"));
+        showShareNote(QCoreApplication::translate("rayut", "This link cannot be drawn as a code"));
         return true;
     }
     QClipboard *clipboard = QGuiApplication::clipboard();
     if (clipboard) {
         clipboard->setText(text);
-        setMessage(QStringLiteral("已复制"));
+        setMessage(QCoreApplication::translate("rayut", "Copied"));
     } else {
         setMessage(QString());
     }
@@ -1151,7 +1152,7 @@ void Controller::saveGroup(const QString &id, const QString &name, const QString
     if (!url.trimmed().isEmpty()) {
         object.insert(QStringLiteral("url"), url);
     }
-    postCatalog(groupPath(id, QString()), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已保存"), false);
+    postCatalog(groupPath(id, QString()), QJsonDocument(object).toJson(QJsonDocument::Compact), QCoreApplication::translate("rayut", "Saved"), false);
     m_groupURL = url;
 }
 
@@ -1176,7 +1177,7 @@ void Controller::loadGroupDetail(const QString &id)
 void Controller::restartProxy()
 {
     if (m_versionMismatch) {
-        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
         return;
     }
     if (m_tunRunning) {
@@ -1448,27 +1449,27 @@ bool Controller::postNodes(const QString &path, const QByteArray &payload, const
 
 void Controller::activateProfile()
 {
-    postProfile(QStringLiteral("/v1/profiles/activate"), QByteArray(), QStringLiteral("已激活"));
+    postProfile(QStringLiteral("/v1/profiles/activate"), QByteArray(), QCoreApplication::translate("rayut", "Activated"));
 }
 
 void Controller::refreshProfile()
 {
-    postProfile(QStringLiteral("/v1/profiles/refresh"), QByteArray(), QStringLiteral("已校验，当前配置未替换"));
+    postProfile(QStringLiteral("/v1/profiles/refresh"), QByteArray(), QCoreApplication::translate("rayut", "Checked. The current profile was not replaced."));
 }
 
 void Controller::applyRuleTemplate(const QString &id)
 {
     if (m_viewedGroup.isEmpty()) {
-        setMessage(QStringLiteral("没有这个分组"));
+        setMessage(QCoreApplication::translate("rayut", "No such group"));
         return;
     }
     if (m_viewedGroup == m_activeGroup && m_tunRunning) {
-        setMessage(QStringLiteral("请先关闭代理"));
+        setMessage(QCoreApplication::translate("rayut", "Turn the proxy off first"));
         return;
     }
     QJsonObject object;
     object.insert(QStringLiteral("id"), id);
-    postCatalog(groupPath(m_viewedGroup, QStringLiteral("template")), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已切换规则"), false);
+    postCatalog(groupPath(m_viewedGroup, QStringLiteral("template")), QJsonDocument(object).toJson(QJsonDocument::Compact), QCoreApplication::translate("rayut", "Rule template applied"), false);
 }
 
 void Controller::loadProfileDocument()
@@ -1483,7 +1484,7 @@ void Controller::loadGroupDocument(const QString &id)
         m_editLines->setDocument(QString());
         m_editProxies.clear();
         queueStateChanged();
-        setMessage(QStringLiteral("没有这个分组"));
+        setMessage(QCoreApplication::translate("rayut", "No such group"));
         return;
     }
     QByteArray body;
@@ -1495,7 +1496,7 @@ void Controller::loadGroupDocument(const QString &id)
         return;
     }
     applyEditDocument(body);
-    setMessage(QStringLiteral("已载入当前配置"));
+    setMessage(QCoreApplication::translate("rayut", "Loaded the current profile"));
 }
 
 bool Controller::previewProfile()
@@ -1532,21 +1533,21 @@ bool Controller::applyProxyEdit(int index, const QString &name, const QString &t
         return false;
     }
     applyEditDocument(body);
-    setMessage(QStringLiteral("已写回文本，尚未保存"));
+    setMessage(QCoreApplication::translate("rayut", "Written back to the text. Not saved yet."));
     return true;
 }
 
 void Controller::saveProfileText()
 {
     if (m_editGroup.isEmpty()) {
-        setMessage(QStringLiteral("没有这个分组"));
+        setMessage(QCoreApplication::translate("rayut", "No such group"));
         return;
     }
     if (m_editGroup == m_activeGroup && m_tunRunning) {
-        setMessage(QStringLiteral("请先关闭代理"));
+        setMessage(QCoreApplication::translate("rayut", "Turn the proxy off first"));
         return;
     }
-    setMessage(QStringLiteral("正在校验…"));
+    setMessage(QCoreApplication::translate("rayut", "Checking…"));
     QJsonObject object;
     object.insert(QStringLiteral("text"), m_editLines->document());
     QByteArray body;
@@ -1558,7 +1559,7 @@ void Controller::saveProfileText()
     if (request(QStringLiteral("GET"), QStringLiteral("/v1/groups"), QByteArray(), &groups, 30000)) {
         applyCatalog(groups, true);
     }
-    setMessage(QStringLiteral("已保存"));
+    setMessage(QCoreApplication::translate("rayut", "Saved"));
 }
 
 void Controller::applyEditDocument(const QByteArray &body)
@@ -1610,7 +1611,7 @@ void Controller::selectProxy(const QString &group, const QString &name)
         return;
     }
     applyGroups(body);
-    setMessage(QStringLiteral("已选择"));
+    setMessage(QCoreApplication::translate("rayut", "Selected"));
 }
 
 void Controller::refreshTraffic()
@@ -1661,7 +1662,7 @@ void Controller::refreshSession()
 
 void Controller::testDelay(const QString &name)
 {
-    setMessage(QStringLiteral("正在测试延迟"));
+    setMessage(QCoreApplication::translate("rayut", "Testing delay"));
     const QString path = QStringLiteral("/v1/proxies/")
         + QString::fromUtf8(QUrl::toPercentEncoding(name))
         + QStringLiteral("/delay");
@@ -1670,7 +1671,7 @@ void Controller::testDelay(const QString &name)
         return;
     }
     const int delay = QJsonDocument::fromJson(body).object().value(QStringLiteral("delay")).toInt();
-    setMessage(QStringLiteral("延迟 %1 ms").arg(delay));
+    setMessage(QCoreApplication::translate("rayut", "Delay %1 ms").arg(delay));
     refreshGroups();
 }
 
@@ -1740,105 +1741,105 @@ bool Controller::request(const QString &method, const QString &path, const QByte
 QString Controller::messageFor(const QString &code) const
 {
     if (code == QLatin1String("profile missing")) {
-        return QStringLiteral("缺少 profile");
+        return QCoreApplication::translate("rayut", "Profile is missing");
     }
     if (code == QLatin1String("core missing")) {
-        return QStringLiteral("缺少核心");
+        return QCoreApplication::translate("rayut", "Core is missing");
     }
     if (code == QLatin1String("empty")) {
-        return QStringLiteral("内容为空");
+        return QCoreApplication::translate("rayut", "The content is empty");
     }
     if (code == QLatin1String("too large")) {
-        return QStringLiteral("内容过大");
+        return QCoreApplication::translate("rayut", "The content is too large");
     }
     if (code == QLatin1String("invalid yaml") || code == QLatin1String("invalid config")) {
-        return QStringLiteral("配置校验失败");
+        return QCoreApplication::translate("rayut", "Configuration check failed");
     }
     if (code == QLatin1String("invalid link")) {
-        return QStringLiteral("链接不完整");
+        return QCoreApplication::translate("rayut", "The link is incomplete");
     }
     if (code == QLatin1String("unrecognized link")) {
-        return QStringLiteral("无法识别的链接");
+        return QCoreApplication::translate("rayut", "Unrecognized link");
     }
     if (code == QLatin1String("file scheme")) {
-        return QStringLiteral("不允许 file 地址");
+        return QCoreApplication::translate("rayut", "file addresses are not allowed");
     }
     if (code == QLatin1String("hook")) {
-        return QStringLiteral("不允许外部程序");
+        return QCoreApplication::translate("rayut", "External programs are not allowed");
     }
     if (code == QLatin1String("allow-lan")) {
-        return QStringLiteral("不允许打开局域网");
+        return QCoreApplication::translate("rayut", "Opening the LAN is not allowed");
     }
     if (code == QLatin1String("external-controller") || code == QLatin1String("bind-address") || code == QLatin1String("secret")) {
-        return QStringLiteral("控制端口超出本机");
+        return QCoreApplication::translate("rayut", "The controller must stay on this phone");
     }
     if (code == QLatin1String("fetch failed") || code == QLatin1String("redirect")) {
-        return QStringLiteral("订阅下载失败");
+        return QCoreApplication::translate("rayut", "Subscription download failed");
     }
     if (code == QLatin1String("no subscription")) {
-        return QStringLiteral("这不是订阅");
+        return QCoreApplication::translate("rayut", "This is not a subscription");
     }
     if (code == QLatin1String("group missing")) {
-        return QStringLiteral("没有这个分组");
+        return QCoreApplication::translate("rayut", "No such group");
     }
     if (code == QLatin1String("tun running")) {
-        return QStringLiteral("请先关闭代理");
+        return QCoreApplication::translate("rayut", "Turn the proxy off first");
     }
     if (code == QLatin1String("disconnect first")) {
-        return QStringLiteral("请先断开代理");
+        return QCoreApplication::translate("rayut", "Disconnect the proxy first");
     }
     if (code == QLatin1String("unknown release")) {
-        return QStringLiteral("清单里没有这个版本");
+        return QCoreApplication::translate("rayut", "That version is not in the list");
     }
     if (code == QLatin1String("hash mismatch")) {
-        return QStringLiteral("校验失败，旧核心未替换");
+        return QCoreApplication::translate("rayut", "Check failed. The old core was not replaced.");
     }
     if (code == QLatin1String("license mismatch")) {
-        return QStringLiteral("许可证校验失败，旧核心未替换");
+        return QCoreApplication::translate("rayut", "License check failed. The old core was not replaced.");
     }
     if (code == QLatin1String("download failed")) {
-        return QStringLiteral("核心下载失败");
+        return QCoreApplication::translate("rayut", "Core download failed");
     }
     if (code == QLatin1String("invalid file")) {
-        return QStringLiteral("文件无效，旧核心未替换");
+        return QCoreApplication::translate("rayut", "Invalid file. The old core was not replaced.");
     }
     if (code == QLatin1String("tun held") || code == QLatin1String("already-running")) {
-        return QStringLiteral("旧核心仍占用网络，已拒绝再启动一份");
+        return QCoreApplication::translate("rayut", "The old core still holds the network. A second one was refused.");
     }
     if (code == QLatin1String("no candidate")) {
-        return QStringLiteral("没有可激活的配置");
+        return QCoreApplication::translate("rayut", "No profile to activate");
     }
     if (code == QLatin1String("unknown template")) {
-        return QStringLiteral("没有这套规则");
+        return QCoreApplication::translate("rayut", "No such rule template");
     }
     if (code == QLatin1String("bad field")) {
-        return QStringLiteral("字段无效");
+        return QCoreApplication::translate("rayut", "Invalid field");
     }
     if (code == QLatin1String("core not running")) {
-        return QStringLiteral("核心未运行");
+        return QCoreApplication::translate("rayut", "Core is not running");
     }
     if (code == QLatin1String("controller unavailable")) {
-        return QStringLiteral("请先关闭再打开代理");
+        return QCoreApplication::translate("rayut", "Turn the proxy off, then on again");
     }
     if (code == QLatin1String("not found")) {
-        return QStringLiteral("没有这个节点");
+        return QCoreApplication::translate("rayut", "No such node");
     }
     if (code == QLatin1String("not selectable")) {
-        return QStringLiteral("这个组不能手动选择");
+        return QCoreApplication::translate("rayut", "This group cannot be chosen by hand");
     }
     if (code == QLatin1String("invalid name")) {
-        return QStringLiteral("名称无效");
+        return QCoreApplication::translate("rayut", "Invalid name");
     }
     if (code == QLatin1String("selection rejected")) {
-        return QStringLiteral("选择失败");
+        return QCoreApplication::translate("rayut", "Selection failed");
     }
     if (code == QLatin1String("delay failed")) {
-        return QStringLiteral("延迟测试失败");
+        return QCoreApplication::translate("rayut", "Delay test failed");
     }
     if (code == QLatin1String("timeout")) {
-        return QStringLiteral("延迟测试超时");
+        return QCoreApplication::translate("rayut", "Delay test timed out");
     }
-    return QStringLiteral("请求失败");
+    return QCoreApplication::translate("rayut", "Request failed");
 }
 
 void Controller::applyGroups(const QByteArray &body)
@@ -1859,7 +1860,7 @@ void Controller::applyGroups(const QByteArray &body)
             const int delay = node.value(QStringLiteral("delay")).toInt();
             QVariantMap row;
             row.insert(QStringLiteral("name"), name);
-            row.insert(QStringLiteral("delayText"), delay > 0 ? QString::number(delay) + QStringLiteral(" ms") : QStringLiteral("未测"));
+            row.insert(QStringLiteral("delayText"), delay > 0 ? QString::number(delay) + QStringLiteral(" ms") : QCoreApplication::translate("rayut", "Not tested"));
             row.insert(QStringLiteral("selected"), name == now);
             nodes.append(row);
         }
@@ -1955,11 +1956,11 @@ void Controller::applyStatus(const QByteArray &body)
     const QString apiVersion = object.value(QStringLiteral("apiVersion")).toString();
     QString coreVersion = object.value(QStringLiteral("coreVersion")).toString();
     if (object.value(QStringLiteral("corePlace")).toString() == QLatin1String("data") && !coreVersion.isEmpty()) {
-        coreVersion += QStringLiteral(" · 数据目录");
+        coreVersion = QCoreApplication::translate("rayut", "%1 · data directory").arg(coreVersion);
     }
     const bool mismatch = !helperVersion.isEmpty() && (helperVersion != QLatin1String(kAppVersion) || apiVersion != QLatin1String(kApiVersion));
     const bool missingVersion = helper && helperVersion.isEmpty();
-    const QString versionText = QStringLiteral("助手 %1 · API %2 · 核心 %3").arg(
+    const QString versionText = QCoreApplication::translate("rayut", "Helper %1 · API %2 · Core %3").arg(
         helperVersion.isEmpty() ? QStringLiteral("—") : helperVersion,
         apiVersion.isEmpty() ? QStringLiteral("—") : apiVersion,
         coreVersion.isEmpty() ? QStringLiteral("—") : coreVersion);
@@ -1991,22 +1992,22 @@ void Controller::applyProfile(const QByteArray &body)
     const QJsonObject object = QJsonDocument::fromJson(body).object();
     const QJsonObject current = object.value(QStringLiteral("current")).toObject();
     const QJsonObject candidate = object.value(QStringLiteral("candidate")).toObject();
-    QString text = QStringLiteral("当前配置：");
-    text += current.value(QStringLiteral("name")).toString(QStringLiteral("无"));
+    QString text = QCoreApplication::translate("rayut", "Current profile: %1").arg(
+        current.value(QStringLiteral("name")).toString(QCoreApplication::translate("rayut", "none", "empty profile name")));
     if (!current.value(QStringLiteral("host")).toString().isEmpty()) {
-        text += QStringLiteral("（") + current.value(QStringLiteral("host")).toString() + QStringLiteral("）");
+        text += QCoreApplication::translate("rayut", " (%1)").arg(current.value(QStringLiteral("host")).toString());
     }
     const QString candidateState = candidate.value(QStringLiteral("state")).toString();
     if (candidateState == QLatin1String("validated")) {
-        text += QStringLiteral("\n待激活：") + candidate.value(QStringLiteral("name")).toString();
+        text += QLatin1Char('\n') + QCoreApplication::translate("rayut", "Waiting to activate: %1").arg(candidate.value(QStringLiteral("name")).toString());
         if (!candidate.value(QStringLiteral("host")).toString().isEmpty()) {
-            text += QStringLiteral("（") + candidate.value(QStringLiteral("host")).toString() + QStringLiteral("）");
+            text += QCoreApplication::translate("rayut", " (%1)").arg(candidate.value(QStringLiteral("host")).toString());
         }
     } else if (candidateState == QLatin1String("failed")) {
-        text += QStringLiteral("\n校验失败，当前配置未替换");
+        text += QLatin1Char('\n') + QCoreApplication::translate("rayut", "Check failed. The current profile was not replaced.");
     }
     const QString ruleTemplate = object.value(QStringLiteral("ruleTemplate")).toString();
-    text += QStringLiteral("\n规则：") + ruleTemplateLabel(ruleTemplate);
+    text += QLatin1Char('\n') + QCoreApplication::translate("rayut", "Rules: %1").arg(ruleTemplateLabel(ruleTemplate));
     if (m_profileText == text && m_ruleTemplate == ruleTemplate) {
         return;
     }

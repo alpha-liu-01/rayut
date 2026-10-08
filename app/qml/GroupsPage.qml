@@ -25,7 +25,7 @@ Page {
 
     header: PageHeader {
         id: groupsHeader
-        title: "订阅分组"
+        title: qsTr("Subscription groups")
     }
 
     Timer {
@@ -119,7 +119,9 @@ Page {
                     }
                     elide: Text.ElideRight
                     color: modelData.id === groupsRoot.selected ? theme.palette.normal.foregroundText : theme.palette.normal.backgroundText
-                    text: modelData.name + " (" + modelData.count + ")" + (modelData.active ? "  使用中" : "")
+                    text: modelData.active
+                          ? qsTr("%1 (%2), in use").arg(modelData.name).arg(modelData.count)
+                          : qsTr("%1 (%2)").arg(modelData.name).arg(modelData.count)
                 }
             }
         }
@@ -127,7 +129,7 @@ Page {
         TextField {
             id: nameField
             Layout.fillWidth: true
-            placeholderText: "组名"
+            placeholderText: qsTr("Group name")
             enabled: groupsRoot.selected !== ""
             inputMethodHints: Qt.ImhNoPredictiveText
         }
@@ -136,14 +138,14 @@ Page {
             id: urlField
             Layout.fillWidth: true
             visible: Controller.groupKind === "subscription"
-            placeholderText: "订阅地址只在这里修改"
+            placeholderText: qsTr("Change the subscription URL only here")
             enabled: groupsRoot.selected !== ""
             inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
         }
 
         Button {
             Layout.fillWidth: true
-            text: "保存"
+            text: qsTr("Save")
             enabled: groupsRoot.selected !== ""
             onClicked: {
                 work.kind = "save"
@@ -153,7 +155,7 @@ Page {
 
         Button {
             Layout.fillWidth: true
-            text: "刷新"
+            text: qsTr("Refresh")
             visible: Controller.groupKind === "subscription"
             enabled: groupsRoot.selected !== ""
             onClicked: {
@@ -164,7 +166,7 @@ Page {
 
         Button {
             Layout.fillWidth: true
-            text: "删除整组"
+            text: qsTr("Delete the whole group")
             enabled: groupsRoot.selected !== ""
             onClicked: PopupUtils.open(deleteDialog, groupsRoot)
         }
@@ -186,11 +188,11 @@ Page {
 
         Dialog {
             id: deleteBox
-            title: "删除这一组？"
-            text: "代理开着时不能删除正在使用的组。"
+            title: qsTr("Delete this group?")
+            text: qsTr("A group in use cannot be deleted while the proxy is on.")
 
             Button {
-                text: "删除"
+                text: qsTr("Delete")
                 color: theme.palette.normal.negative
                 onClicked: {
                     PopupUtils.close(deleteBox)
@@ -200,7 +202,7 @@ Page {
             }
 
             Button {
-                text: "取消"
+                text: qsTr("Cancel")
                 onClicked: PopupUtils.close(deleteBox)
             }
         }
