@@ -181,8 +181,12 @@ rules:
 	if strings.Contains(string(raw), "secret-alpha") || strings.Contains(string(raw), "example.com") {
 		t.Fatal("selector list contains a secret or server")
 	}
-	if _, err := store.SelectNode(groups[0].ID, "自动", "alpha"); err == nil || Code(err) != "not selectable" {
+	if _, err := store.SelectNode(groups[0].ID, "自动", "alpha"); err != nil {
 		t.Fatal(err)
+	}
+	selectors, err = store.Selectors(groups[0].ID)
+	if err != nil || selectors[0].Now != "alpha" || selectors[1].Now != "beta" {
+		t.Fatalf("url-test tap %+v %v", selectors, err)
 	}
 	if _, err := store.SelectNode(groups[0].ID, "手动", "beta"); err != nil {
 		t.Fatal(err)
@@ -236,7 +240,7 @@ rules:
 		t.Fatal(err)
 	}
 	targets, err := store.RuntimeSelects(groups[0].ID, "日本", "japan")
-	if err != nil || len(targets) != 2 || targets[0] != [2]string{"日本", "japan"} || targets[1] != [2]string{"漏网", "日本"} {
+	if err != nil || len(targets) != 2 || targets[0] != [2]string{"漏网", "日本"} || targets[1] != [2]string{"日本", "japan"} {
 		t.Fatalf("%+v %v", targets, err)
 	}
 	if _, err := store.SelectNode(groups[0].ID, "日本", "japan"); err != nil {
@@ -248,5 +252,35 @@ rules:
 	}
 	if !selectors[0].Nodes[0].Selected || selectors[1].Nodes[0].Selected || !selectors[1].Nodes[1].Selected {
 		t.Fatalf("mark %+v", selectors)
+	}
+}
+
+func TestSelectNodeUpdatesEveryManualGroup(t *testing.T) {
+	const doc = `proxies:
+  - {name: alpha, type: ss, server: example.com, port: 1, cipher: aes-128-gcm, password: secret-alpha}
+  - {name: japan, type: ss, server: example.com, port: 2, cipher: aes-128-gcm, password: secret-beta}
+proxy-groups:
+  - {name: 节点, type: select, proxies: [alpha, japan], now: alpha}
+  - {name: 媒体, type: select, proxies: [alpha, japan], now: alpha}
+  - {name: 漏网, type: select, proxies: [alpha, japan], now: alpha}
+  - {name: 最快, type: url-test, proxies: [alpha, japan], url: https://www.gstatic.com/generate_204, interval: 300}
+rules:
+  - MATCH,漏网
+`
+	store := &Store{Dir: t.TempDir(), Test: func(string) error { return nil }}
+	groups, err := store.ImportText("订阅", doc)
+	if err != nil || len(groups) != 1 {
+		t.Fatal(err)
+	}
+	targets, err := store.RuntimeSelects(groups[0].ID, "最快", "japan")
+	if err != nil || len(targets) != 3 {
+		t.Fatalf("%+v %v", targets, err)
+	}
+	if _, err := store.SelectNode(groups[0].ID, "最快", "japan"); err != nil {
+		t.Fatal(err)
+	}
+	selectors, err := store.Selectors(groups[0].ID)
+	if err != nil || selectors[0].Now != "japan" || selectors[1].Now != "japan" || selectors[2].Now != "japan" {
+		t.Fatalf("%+v %v", selectors, err)
 	}
 }

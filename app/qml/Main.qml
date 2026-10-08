@@ -1055,6 +1055,24 @@ MainView {
                     font.pixelSize: FontUtils.sizeToPixels("large")
                 }
 
+                Row {
+                    width: parent.width
+                    spacing: units.gu(1)
+
+                    Label {
+                        width: parent.width - killSwitch.width - units.gu(1)
+                        height: killSwitch.height
+                        verticalAlignment: Text.AlignVCenter
+                        text: "断开即拦截"
+                    }
+
+                    Switch {
+                        id: killSwitch
+                        checked: Controller.killSwitch
+                        onClicked: Controller.setKillSwitch(!Controller.killSwitch)
+                    }
+                }
+
                 Button {
                     width: parent.width
                     text: "订阅分组"

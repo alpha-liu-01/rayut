@@ -14,6 +14,7 @@ import (
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/api"
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
+	"github.com/alpha-liu-01/rayut/daemon/internal/killswitch"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 )
@@ -57,10 +58,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "refusing non-loopback listener")
 		os.Exit(1)
 	}
-	if err := route.Recover(); err != nil {
-		ln.Close()
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	owned, ownedErr := route.HasOwned()
+	if ownedErr != nil || !owned || !killswitch.Enabled() {
+		if err := route.Recover(); err != nil {
+			ln.Close()
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	server, err := api.New()
 	if err != nil {

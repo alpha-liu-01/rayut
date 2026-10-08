@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -19,7 +20,17 @@ import (
 var (
 	versionOnce sync.Once
 	versionText = "unknown"
+	stopping    atomic.Bool
 )
+
+// BeginStop marks the following exit as a requested stop, not a crash.
+func BeginStop() { stopping.Store(true) }
+
+// EndStop clears the requested-stop mark.
+func EndStop() { stopping.Store(false) }
+
+// Stopping reports whether Stop is in progress.
+func Stopping() bool { return stopping.Load() }
 
 // Version runs `mihomo -v` once and returns the version token.
 // `mihomo version` is not a version flag and must not be used.

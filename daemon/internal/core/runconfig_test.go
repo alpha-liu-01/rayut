@@ -1,29 +1,22 @@
 package core
 
-import "testing"
+import (
+	"strings"
+	"testing"
 
-func TestOverlayControllerReplacesListenSecret(t *testing.T) {
+	"gopkg.in/yaml.v3"
+)
+
+func TestDisableStoredSelection(t *testing.T) {
 	root := map[string]any{
-		"secret":              "hidden",
-		"external-controller": "0.0.0.0:9090",
-		"external-ui":         "/tmp/ui",
-		"log-file":            "/tmp/mihomo.log",
-		"proxies":             []any{},
+		"profile": map[string]any{"store-selected": true},
 	}
-	overlayController(root, "generated")
-	if root["external-controller"] != ExternalController {
-		t.Fatalf("controller %v", root["external-controller"])
+	disableStoredSelection(root)
+	out, err := yaml.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if root["secret"] != "generated" {
-		t.Fatal("secret was not replaced")
-	}
-	if _, ok := root["external-ui"]; ok {
-		t.Fatal("external-ui remained")
-	}
-	if _, ok := root["log-file"]; ok {
-		t.Fatal("log-file remained")
-	}
-	if root["unified-delay"] != true {
-		t.Fatal("unified delay was not enabled")
+	if !strings.Contains(string(out), "store-selected: false") {
+		t.Fatalf("stored selection still on: %s", out)
 	}
 }

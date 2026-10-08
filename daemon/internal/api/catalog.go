@@ -250,27 +250,15 @@ func (s *Server) groupSelect(w http.ResponseWriter, r *http.Request, id string) 
 				http.Error(w, profile.Code(err), http.StatusBadRequest)
 				return
 			}
-			views, err := store.Selectors(id)
-			if err != nil {
-				s.mu.Unlock()
-				http.Error(w, profile.Code(err), http.StatusBadRequest)
-				return
-			}
-			manual := false
-			for _, view := range views {
-				if view.Name == selector && view.Selectable {
-					manual = true
-				}
-			}
-			if !manual {
-				s.mu.Unlock()
-				http.Error(w, "not selectable", http.StatusBadRequest)
-				return
-			}
 			targets, err := store.RuntimeSelects(id, selector, body.Name)
 			if err != nil {
 				s.mu.Unlock()
 				http.Error(w, profile.Code(err), http.StatusBadRequest)
+				return
+			}
+			if len(targets) == 0 {
+				s.mu.Unlock()
+				http.Error(w, "not selectable", http.StatusBadRequest)
 				return
 			}
 			s.mu.Unlock()
@@ -279,11 +267,12 @@ func (s *Server) groupSelect(w http.ResponseWriter, r *http.Request, id string) 
 				http.Error(w, "controller unavailable", http.StatusConflict)
 				return
 			}
-			for _, target := range targets {
-				if err := client.Select(r.Context(), target[0], target[1]); err != nil {
-					http.Error(w, "selection rejected", http.StatusConflict)
-					return
-				}
+			if err := client.Select(r.Context(), targets[0][0], targets[0][1]); err != nil {
+				http.Error(w, "selection rejected", http.StatusConflict)
+				return
+			}
+			for _, target := range targets[1:] {
+				_ = client.Select(r.Context(), target[0], target[1])
 			}
 			s.mu.Lock()
 			store = s.profileStore()

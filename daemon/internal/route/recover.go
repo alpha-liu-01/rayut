@@ -8,6 +8,30 @@ import (
 	"github.com/alpha-liu-01/rayut/daemon/internal/rules"
 )
 
+// OwnsAny reports whether a rule listing contains one of this program's rules.
+func OwnsAny(show string) bool {
+	for _, line := range strings.Split(show, "\n") {
+		if _, kind := rules.Classify(line); kind == "owned" {
+			return true
+		}
+	}
+	return false
+}
+
+// HasOwned reports whether IPv4 or IPv6 still has one of this program's rules.
+func HasOwned() (bool, error) {
+	for _, family := range []string{"4", "6"} {
+		out, err := ruleShow(family)
+		if err != nil {
+			return false, err
+		}
+		if OwnsAny(out) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // Recover deletes only the mihomo policy rules observed on this phone and
 // clears routing table 2022. It does not flush the main table or the firewall.
 func Recover() error {

@@ -314,9 +314,8 @@ func (s *Store) Selectors(id string) ([]SelectorInfo, error) {
 	return projectSelectors(doc, s.readMap(s.groupLinks(id)), s.readDelayMap(id)), nil
 }
 
-// RuntimeSelects lists the manual groups whose live selection must follow a tap.
-// The first entry is the group on screen. A later entry is the group named by
-// MATCH, which is the one that actually carries traffic.
+// RuntimeSelects lists every manual group a tap has to update on the live core.
+// Rules can send a site to any of these groups, so one tap moves all of them.
 func (s *Store) RuntimeSelects(id, selector, name string) ([][2]string, error) {
 	if err := s.ensureGroups(); err != nil {
 		return nil, err
@@ -328,7 +327,7 @@ func (s *Store) RuntimeSelects(id, selector, name string) ([][2]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return runtimeSelects(doc, strings.TrimSpace(selector), strings.TrimSpace(name)), nil
+	return choiceTargets(doc, strings.TrimSpace(selector), strings.TrimSpace(name)), nil
 }
 
 // SelectNode writes now on one manual select group. An empty selector picks
@@ -349,10 +348,9 @@ func (s *Store) SelectNode(id, selector, name string) ([]NodeInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := markSelected(doc, selector, name); err != nil {
+	if err := applyChoice(doc, selector, name); err != nil {
 		return nil, err
 	}
-	pointTraffic(doc, selector, name)
 	out, err := yaml.Marshal(doc)
 	if err != nil {
 		return nil, errCode("invalid yaml")
@@ -913,14 +911,13 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 	groups, _ := doc["proxy-groups"].([]any)
 	out := make([]SelectorInfo, 0)
 	active := effectiveNode(doc)
-	traffic := matchTarget(doc)
 	for _, item := range groups {
 		group, ok := item.(map[string]any)
 		if !ok || !selectableKind(scalarText(group["type"])) {
 			continue
 		}
 		now := scalarText(group["now"])
-		groupName := scalarText(group["name"])
+		manual := manualSelect(scalarText(group["type"]))
 		list, _ := group["proxies"].([]any)
 		nodes := make([]NodeInfo, 0, len(list))
 		for _, entry := range list {
@@ -928,8 +925,11 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 			if nodeName == "" {
 				continue
 			}
-			onPath := groupName == traffic && now != "" && nodeName == now
-			info := NodeInfo{Index: -1, Name: nodeName, Selected: onPath || (active != "" && nodeName == active)}
+			selected := manual && now != "" && nodeName == now
+			if !manual && active != "" && nodeName == active {
+				selected = true
+			}
+			info := NodeInfo{Index: -1, Name: nodeName, Selected: selected}
 			if field, ok := fields[nodeName]; ok {
 				info.Index = field.Index
 				info.Type = field.Type
@@ -950,40 +950,23 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 	return out
 }
 
-func markSelected(doc map[string]any, selector, name string) error {
-	groups, _ := doc["proxy-groups"].([]any)
-	seen := false
-	for _, item := range groups {
-		group, ok := item.(map[string]any)
-		if !ok {
-			continue
+// applyChoice writes the tapped node onto every manual group that lists it.
+// A url-test tab cannot store a choice itself; the manual groups still follow.
+func applyChoice(doc map[string]any, viewed, node string) error {
+	targets := choiceTargets(doc, viewed, node)
+	if len(targets) == 0 {
+		if group := groupByName(doc, viewed); group != nil && !manualSelect(scalarText(group["type"])) {
+			return errCode("not selectable")
 		}
-		groupName := scalarText(group["name"])
-		if selector != "" && groupName != selector {
-			continue
-		}
-		if selector != "" {
-			seen = true
-		}
-		if !manualSelect(scalarText(group["type"])) {
-			if selector != "" {
-				return errCode("not selectable")
-			}
-			continue
-		}
-		if !proxyListed(group, name) {
-			if selector != "" {
-				return errCode("not found")
-			}
-			continue
-		}
-		group["now"] = name
-		return nil
-	}
-	if seen {
 		return errCode("not found")
 	}
-	return errCode("not found")
+	for _, target := range targets {
+		group := groupByName(doc, target[0])
+		if group != nil {
+			group["now"] = target[1]
+		}
+	}
+	return nil
 }
 
 func manualSelect(kind string) bool {
@@ -1049,41 +1032,32 @@ func effectiveNode(doc map[string]any) string {
 	return ""
 }
 
-func pointTraffic(doc map[string]any, viewed, node string) {
-	traffic := matchTarget(doc)
-	if traffic == "" || traffic == viewed {
-		return
-	}
-	group := groupByName(doc, traffic)
-	if group == nil || !manualSelect(scalarText(group["type"])) {
-		return
-	}
-	if proxyListed(group, node) {
-		group["now"] = node
-		return
-	}
-	if viewed != "" && proxyListed(group, viewed) {
-		group["now"] = viewed
-	}
-}
-
-func runtimeSelects(doc map[string]any, selector, name string) [][2]string {
-	var out [][2]string
-	if group := groupByName(doc, selector); group != nil && manualSelect(scalarText(group["type"])) && proxyListed(group, name) {
-		out = append(out, [2]string{selector, name})
+func choiceTargets(doc map[string]any, viewed, node string) [][2]string {
+	groups, _ := doc["proxy-groups"].([]any)
+	out := make([][2]string, 0)
+	for _, item := range groups {
+		group, ok := item.(map[string]any)
+		if !ok || !manualSelect(scalarText(group["type"])) {
+			continue
+		}
+		groupName := scalarText(group["name"])
+		if groupName == "" {
+			continue
+		}
+		if proxyListed(group, node) {
+			out = append(out, [2]string{groupName, node})
+			continue
+		}
+		if viewed != "" && viewed != groupName && proxyListed(group, viewed) {
+			out = append(out, [2]string{groupName, viewed})
+		}
 	}
 	traffic := matchTarget(doc)
-	if traffic == "" || traffic == selector {
-		return out
-	}
-	group := groupByName(doc, traffic)
-	if group == nil || !manualSelect(scalarText(group["type"])) {
-		return out
-	}
-	if proxyListed(group, name) {
-		out = append(out, [2]string{traffic, name})
-	} else if selector != "" && proxyListed(group, selector) {
-		out = append(out, [2]string{traffic, selector})
+	for i, target := range out {
+		if target[0] == traffic && i != 0 {
+			out[0], out[i] = out[i], out[0]
+			break
+		}
 	}
 	return out
 }

@@ -33,6 +33,7 @@ func prepareRunConfig() (string, error) {
 		return "", err
 	}
 	profile.EnsureIPv6(root)
+	disableStoredSelection(root)
 	overlayController(root, secret)
 	out, err := yaml.Marshal(root)
 	if err != nil {
@@ -43,6 +44,17 @@ func prepareRunConfig() (string, error) {
 		return "", err
 	}
 	return dest, nil
+}
+
+// disableStoredSelection keeps the node written into the profile. mihomo
+// otherwise reloads the previous selection from its cache on every start.
+func disableStoredSelection(root map[string]any) {
+	section, _ := root["profile"].(map[string]any)
+	if section == nil {
+		section = map[string]any{}
+		root["profile"] = section
+	}
+	section["store-selected"] = false
 }
 
 func overlayController(root map[string]any, secret string) {

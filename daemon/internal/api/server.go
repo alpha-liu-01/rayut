@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
+	"github.com/alpha-liu-01/rayut/daemon/internal/killswitch"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 	"github.com/alpha-liu-01/rayut/daemon/internal/traffic"
@@ -23,18 +24,20 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.20"
+	HelperVersion = "0.1.23"
 	APIVersion    = "1"
 )
 
 type Server struct {
 	token   string
 	mu      sync.Mutex
+	coreMu  sync.Mutex
 	http    *http.Server
 	groups  groupAPI
 	session sessionAPI
 	traffic *traffic.Ledger
 	delays  delayState
+	watch   killswitch.Watch
 }
 
 type delayState struct {
@@ -61,9 +64,13 @@ func New() (*Server, error) {
 		return nil, err
 	}
 	s := &Server{token: token, traffic: traffic.New(traffic.Path())}
+	if owned, err := route.HasOwned(); err == nil && owned && killswitch.Enabled() {
+		s.watch.Blocked = true
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/health", s.auth(s.health))
 	mux.HandleFunc("/v1/status", s.auth(s.status))
+	mux.HandleFunc("/v1/kill-switch", s.auth(s.killSwitch))
 	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
 	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
 	mux.HandleFunc("/v1/profiles", s.auth(s.profiles))
@@ -144,6 +151,10 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := core.Alive(); ok {
+		s.coreMu.Lock()
+		s.watch.WasUp = true
+		s.watch.Blocked = false
+		s.coreMu.Unlock()
 		writeJSON(w, s.snapshot())
 		return
 	}
@@ -164,14 +175,24 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := core.WaitTun(15 * time.Second); err != nil {
+		core.BeginStop()
 		_ = core.Stop()
 		_ = route.Recover()
+		core.EndStop()
+		s.coreMu.Lock()
+		s.watch.WasUp = false
+		s.watch.Blocked = false
+		s.coreMu.Unlock()
 		http.Error(w, "tun failed", http.StatusInternalServerError)
 		return
 	}
 	if err := route.PinIPv6Gateways(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+	s.coreMu.Lock()
+	s.watch.WasUp = true
+	s.watch.Blocked = false
+	s.coreMu.Unlock()
 	writeJSON(w, s.snapshot())
 }
 
@@ -197,12 +218,21 @@ func (s *Server) StopTun() error {
 }
 
 func (s *Server) stopTun() error {
+	core.BeginStop()
+	defer core.EndStop()
 	s.sampleTraffic()
 	if err := core.Stop(); err != nil {
 		return err
 	}
 	s.sampleTraffic()
-	return route.Recover()
+	if err := route.Recover(); err != nil {
+		return err
+	}
+	s.coreMu.Lock()
+	s.watch.WasUp = false
+	s.watch.Blocked = false
+	s.coreMu.Unlock()
+	return nil
 }
 
 func (s *Server) snapshot() map[string]string {
@@ -218,13 +248,60 @@ func (s *Server) snapshot() map[string]string {
 	if _, err := os.Stat(paths.Profile); err != nil {
 		config = "missing"
 	}
+	s.coreMu.Lock()
+	blocked := s.watch.Blocked
+	s.coreMu.Unlock()
+	network := "open"
+	if blocked {
+		network = "blocked"
+	}
+	sw := "off"
+	if killswitch.Enabled() {
+		sw = "on"
+	}
 	return map[string]string{
 		"mihomo":        state,
 		"tun":           tun,
 		"config":        config,
+		"network":       network,
+		"killSwitch":    sw,
 		"helperVersion": HelperVersion,
 		"apiVersion":    APIVersion,
 		"coreVersion":   core.Version(),
+	}
+}
+
+func (s *Server) killSwitch(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, map[string]bool{"enabled": killswitch.Enabled()})
+	case http.MethodPost:
+		var body struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 256)).Decode(&body); err != nil {
+			http.Error(w, "invalid", http.StatusBadRequest)
+			return
+		}
+		if err := killswitch.Set(body.Enabled); err != nil {
+			http.Error(w, "save failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"enabled": killswitch.Enabled()})
+	default:
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) noteCore() {
+	_, alive := core.Alive()
+	s.coreMu.Lock()
+	shouldRecover := s.watch.Observe(alive, core.Stopping(), killswitch.Enabled())
+	s.coreMu.Unlock()
+	if shouldRecover {
+		if err := route.Recover(); err != nil {
+			fmt.Fprintln(os.Stderr, "recover")
+		}
 	}
 }
 

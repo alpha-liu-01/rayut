@@ -230,7 +230,10 @@ Page {
         interval: 1000
         running: homeRoot.visible
         repeat: true
-        onTriggered: Controller.refreshTraffic()
+        onTriggered: {
+            Controller.refreshStatus()
+            Controller.refreshTraffic()
+        }
     }
 
     ColumnLayout {
@@ -556,6 +559,7 @@ Page {
 
             Button {
                 width: parent.width
+                visible: !Controller.networkBlocked
                 text: "总开关"
                 onClicked: {
                     if (!Controller.helperRunning)
@@ -563,6 +567,20 @@ Page {
                     else
                         Controller.toggleProxy()
                 }
+            }
+
+            Button {
+                width: parent.width
+                visible: Controller.networkBlocked
+                text: "关闭"
+                onClicked: Controller.disableTun()
+            }
+
+            Button {
+                width: parent.width
+                visible: Controller.networkBlocked
+                text: "重连"
+                onClicked: Controller.enableTun()
             }
 
             Label {

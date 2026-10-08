@@ -28,7 +28,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.20";
+const char kAppVersion[] = "0.1.23";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -156,6 +156,8 @@ Controller::Controller(QObject *parent)
     , m_coreRunning(false)
     , m_configBroken(false)
     , m_versionMismatch(false)
+    , m_killSwitch(false)
+    , m_networkBlocked(false)
     , m_stateQueued(false)
     , m_editLines(new EditLineModel(this))
     , m_editFocusRow(-1)
@@ -187,10 +189,23 @@ bool Controller::versionMismatch() const
     return m_versionMismatch;
 }
 
+bool Controller::killSwitch() const
+{
+    return m_killSwitch;
+}
+
+bool Controller::networkBlocked() const
+{
+    return m_networkBlocked;
+}
+
 QString Controller::summary() const
 {
     if (!m_helperRunning) {
         return QStringLiteral("助手未运行");
+    }
+    if (m_networkBlocked) {
+        return QStringLiteral("网络已拦截，等待关闭或重连");
     }
     if (m_coreRunning && m_tunRunning) {
         return QStringLiteral("代理打开");
@@ -416,7 +431,7 @@ void Controller::refresh()
 {
     QByteArray body;
     if (!request(QStringLiteral("GET"), QStringLiteral("/v1/status"), QByteArray(), &body, 30000)) {
-        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty()
+        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || m_killSwitch || m_networkBlocked || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty()
             || m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0
             || m_totalUpload != 0 || m_totalDownload != 0 || !m_trafficSamples.isEmpty();
         m_helperRunning = false;
@@ -424,6 +439,8 @@ void Controller::refresh()
         m_coreRunning = false;
         m_configBroken = false;
         m_versionMismatch = false;
+        m_killSwitch = false;
+        m_networkBlocked = false;
         m_configState = QStringLiteral("ok");
         m_profileText.clear();
         m_ruleTemplate.clear();
@@ -537,6 +554,27 @@ void Controller::disableTun()
         applyStatus(body);
         setMessage(QString());
     }
+}
+
+void Controller::refreshStatus()
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/status"), QByteArray(), &body, 3000)) {
+        return;
+    }
+    applyStatus(body);
+}
+
+void Controller::setKillSwitch(bool on)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("enabled"), on);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/kill-switch"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 15000)) {
+        return;
+    }
+    m_killSwitch = QJsonDocument::fromJson(body).object().value(QStringLiteral("enabled")).toBool();
+    queueStateChanged();
 }
 
 void Controller::toggleProxy()
@@ -1604,7 +1642,9 @@ void Controller::applyStatus(const QByteArray &body)
     if (tun) {
         m_configBroken = false;
     }
-    if (helper == m_helperRunning && tun == m_tunRunning && core == m_coreRunning && config == m_configState && (mismatch || missingVersion) == m_versionMismatch && versionText == m_versionText) {
+    const bool blocked = object.value(QStringLiteral("network")).toString() == QLatin1String("blocked");
+    const bool killOn = object.value(QStringLiteral("killSwitch")).toString() == QLatin1String("on");
+    if (helper == m_helperRunning && tun == m_tunRunning && core == m_coreRunning && config == m_configState && (mismatch || missingVersion) == m_versionMismatch && versionText == m_versionText && blocked == m_networkBlocked && killOn == m_killSwitch) {
         return;
     }
     m_helperRunning = helper;
@@ -1612,6 +1652,8 @@ void Controller::applyStatus(const QByteArray &body)
     m_coreRunning = core;
     m_configState = config;
     m_versionMismatch = mismatch || missingVersion;
+    m_networkBlocked = blocked;
+    m_killSwitch = killOn;
     m_versionText = versionText;
     queueStateChanged();
 }

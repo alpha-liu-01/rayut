@@ -18,6 +18,7 @@ var (
 	ClientToken string
 	Ready       string
 	HelperPid   string
+	KillSwitch  string
 	uid         int
 	gid         int
 )
@@ -46,6 +47,7 @@ func Init() error {
 	ClientToken = filepath.Join(config, "client-token")
 	Ready = filepath.Join(Runtime, "ready")
 	HelperPid = filepath.Join(Runtime, "rayutd.pid")
+	KillSwitch = filepath.Join(data, "kill-switch")
 	return prepareDirs(data, config)
 }
 

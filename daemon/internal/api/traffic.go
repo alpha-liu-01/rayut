@@ -37,6 +37,7 @@ func (s *Server) watchTraffic(stop <-chan struct{}) {
 }
 
 func (s *Server) sampleTraffic() {
+	s.noteCore()
 	if s.traffic == nil {
 		return
 	}
