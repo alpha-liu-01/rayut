@@ -159,7 +159,7 @@ signals:
 
 private:
     bool readToken();
-    bool request(const QString &method, const QString &path, const QByteArray &payload, QByteArray *response, int timeoutMs);
+    bool request(const QString &method, const QString &path, const QByteArray &payload, QByteArray *response, int timeoutMs, bool allowTokenRefresh = true);
     void setMessage(const QString &message);
     void queueStateChanged();
     void applyStatus(const QByteArray &body);

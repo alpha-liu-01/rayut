@@ -23,6 +23,7 @@
 #include <QNetworkRequest>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QThread>
 #include <QTimer>
 #include <QUrl>
 
@@ -493,10 +494,17 @@ void Controller::startHelper(QString password)
         setMessage(QStringLiteral("启动超时"));
         return;
     }
-    refresh();
-    if (m_helperRunning) {
-        setMessage(QString());
-        return;
+    // The new helper replaces the bearer file. A token cached from the
+    // previous process is rejected once, which used to look like a bad password.
+    m_token.clear();
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        readToken();
+        refresh();
+        if (m_helperRunning) {
+            setMessage(QString());
+            return;
+        }
+        QThread::msleep(100);
     }
     setMessage(QStringLiteral("连接失败"));
 }
@@ -1342,22 +1350,22 @@ void Controller::postProfile(const QString &path, const QByteArray &payload, con
     setMessage(success);
 }
 
-bool Controller::request(const QString &method, const QString &path, const QByteArray &payload, QByteArray *response, int timeoutMs)
+bool Controller::request(const QString &method, const QString &path, const QByteArray &payload, QByteArray *response, int timeoutMs, bool allowTokenRefresh)
 {
     if (m_token.isEmpty() && !readToken()) {
         return false;
     }
 
-    QNetworkRequest request(QUrl(QStringLiteral("http://127.0.0.1:18771") + path));
-    request.setRawHeader("Authorization", QByteArray("Bearer ") + m_token.toUtf8());
+    QNetworkRequest networkRequest(QUrl(QStringLiteral("http://127.0.0.1:18771") + path));
+    networkRequest.setRawHeader("Authorization", QByteArray("Bearer ") + m_token.toUtf8());
     if (!payload.isEmpty()) {
-        request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+        networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     }
     QNetworkReply *reply = nullptr;
     if (method == QLatin1String("GET")) {
-        reply = m_network->get(request);
+        reply = m_network->get(networkRequest);
     } else {
-        reply = m_network->sendCustomRequest(request, method.toUtf8(), payload);
+        reply = m_network->sendCustomRequest(networkRequest, method.toUtf8(), payload);
     }
 
     QEventLoop loop;
@@ -1378,6 +1386,9 @@ bool Controller::request(const QString &method, const QString &path, const QByte
         reply->deleteLater();
         if (status == 401) {
             m_token.clear();
+            if (allowTokenRefresh && readToken()) {
+                return this->request(method, path, payload, response, timeoutMs, false);
+            }
         }
         if (method != QLatin1String("GET")) {
             setMessage(messageFor(QString::fromUtf8(body).trimmed()));
