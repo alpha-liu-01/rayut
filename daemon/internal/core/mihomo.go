@@ -1,9 +1,11 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -31,6 +33,26 @@ func Alive() (int, bool) {
 	return pid, true
 }
 
+// Test checks a config with the fixed mihomo binary and discards its output.
+func Test(configPath string) error {
+	if _, err := os.Stat(paths.Mihomo); err != nil {
+		return fmt.Errorf("core missing")
+	}
+	dir := filepath.Join(paths.Runtime, "check")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, paths.Mihomo, "-t", "-d", dir, "-f", configPath)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("invalid config")
+	}
+	return nil
+}
+
 // Start launches the fixed mihomo binary. The caller recovers routes first.
 func Start() error {
 	if _, ok := Alive(); ok {
@@ -44,6 +66,12 @@ func Start() error {
 	}
 	if err := os.MkdirAll(paths.Runtime, 0o700); err != nil {
 		return err
+	}
+	payload := filepath.Join(filepath.Dir(paths.Profile), "subscription.payload")
+	if data, err := os.ReadFile(payload); err == nil {
+		if err := os.WriteFile(filepath.Join(paths.Runtime, "subscription.payload"), data, 0o600); err != nil {
+			return err
+		}
 	}
 	log, err := os.OpenFile(logFile(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {

@@ -71,13 +71,29 @@ MainView {
         }
     }
 
-    Page {
+    PageStack {
+        id: stack
         anchors.fill: parent
 
-        header: PageHeader {
-            id: header
-            title: "Rayut"
-        }
+        Component.onCompleted: stack.push(homePage)
+    }
+
+    Component {
+        id: homePage
+
+        Page {
+            header: PageHeader {
+                id: header
+                title: "Rayut"
+
+                trailingActionBar.actions: [
+                    Action {
+                        iconName: "note"
+                        text: "订阅"
+                        onTriggered: stack.push(profilePage)
+                    }
+                ]
+            }
 
         ColumnLayout {
             spacing: units.gu(2)
@@ -93,6 +109,13 @@ MainView {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 text: Controller.summary
+            }
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: Controller.profileText !== ""
+                text: Controller.profileText
             }
 
             Button {
@@ -125,6 +148,89 @@ MainView {
 
             Item {
                 Layout.fillHeight: true
+            }
+        }
+        }
+    }
+
+    Component {
+        id: profilePage
+
+        Page {
+            header: PageHeader {
+                title: "订阅"
+            }
+
+            Flickable {
+                id: flick
+                anchors.fill: parent
+                contentHeight: profileColumn.implicitHeight + units.gu(4)
+                clip: true
+
+                ColumnLayout {
+                    id: profileColumn
+                    width: parent.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(2)
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: Controller.helperRunning ? Controller.profileText : "请先在首页连接"
+                    }
+
+                    TextField {
+                        id: urlField
+                        Layout.fillWidth: true
+                        placeholderText: "https 订阅链接"
+                        enabled: Controller.helperRunning
+                        inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "导入链接"
+                        enabled: Controller.helperRunning
+                        onClicked: Controller.importURL(urlField.text)
+                    }
+
+                    TextArea {
+                        id: yamlField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: units.gu(18)
+                        placeholderText: "本地 YAML"
+                        enabled: Controller.helperRunning
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "导入 YAML"
+                        enabled: Controller.helperRunning
+                        onClicked: Controller.importContent(yamlField.text)
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "刷新"
+                        enabled: Controller.helperRunning
+                        onClicked: Controller.refreshProfile()
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "激活"
+                        enabled: Controller.helperRunning && !Controller.tunRunning
+                        onClicked: Controller.activateProfile()
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                }
             }
         }
     }

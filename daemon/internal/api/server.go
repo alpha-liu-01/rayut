@@ -45,6 +45,11 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/status", s.auth(s.status))
 	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
 	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
+	mux.HandleFunc("/v1/profiles", s.auth(s.profiles))
+	mux.HandleFunc("/v1/profiles/import-content", s.auth(s.importContent))
+	mux.HandleFunc("/v1/profiles/import-url", s.auth(s.importURL))
+	mux.HandleFunc("/v1/profiles/activate", s.auth(s.activateProfile))
+	mux.HandleFunc("/v1/profiles/refresh", s.auth(s.refreshProfile))
 	s.http = &http.Server{
 		Addr:              ListenAddr,
 		Handler:           mux,
