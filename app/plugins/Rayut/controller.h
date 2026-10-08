@@ -74,9 +74,10 @@ class Controller : public QObject {
     Q_PROPERTY(QString groupURL READ groupURL NOTIFY stateChanged)
     Q_PROPERTY(QString shareImage READ shareImage NOTIFY shareChanged)
     Q_PROPERTY(QString shareNote READ shareNote NOTIFY shareChanged)
-    Q_PROPERTY(bool delayRunning READ delayRunning NOTIFY stateChanged)
-    Q_PROPERTY(int delayDone READ delayDone NOTIFY stateChanged)
-    Q_PROPERTY(int delayTotal READ delayTotal NOTIFY stateChanged)
+    Q_PROPERTY(bool delayRunning READ delayRunning NOTIFY delayChanged)
+    Q_PROPERTY(int delayDone READ delayDone NOTIFY delayChanged)
+    Q_PROPERTY(int delayTotal READ delayTotal NOTIFY delayChanged)
+    Q_PROPERTY(QVariantMap nodeDelays READ nodeDelays NOTIFY delayChanged)
     Q_PROPERTY(EditLineModel *editLines READ editLines CONSTANT)
     Q_PROPERTY(int editFocusRow READ editFocusRow NOTIFY editFocusChanged)
     Q_PROPERTY(int editFocusColumn READ editFocusColumn NOTIFY editFocusChanged)
@@ -124,6 +125,7 @@ public:
     bool delayRunning() const;
     int delayDone() const;
     int delayTotal() const;
+    QVariantMap nodeDelays() const;
     EditLineModel *editLines() const;
     int editFocusRow() const;
     int editFocusColumn() const;
@@ -183,6 +185,7 @@ signals:
     void stateChanged();
     void editFocusChanged();
     void shareChanged();
+    void delayChanged();
 
 private:
     bool readToken();
@@ -198,9 +201,11 @@ private:
     void applyTraffic(const QByteArray &body);
     void applyEditDocument(const QByteArray &body);
     void applyCatalog(const QByteArray &body, bool reloadNodes);
-    void applyNodes(const QByteArray &body);
-    void applySelectors(const QByteArray &body);
-    void loadSelectors(const QString &id);
+    bool applyNodes(const QByteArray &body);
+    bool applySelectors(const QByteArray &body);
+    bool loadSelectors(const QString &id);
+    void rememberDelays(const QVariantList &nodes);
+    void noteDelayProgress();
     void loadNodes(const QString &id);
     bool postCatalog(const QString &path, const QByteArray &payload, const QString &success, bool reloadNodes);
     bool postNodes(const QString &path, const QByteArray &payload, const QString &success);
@@ -261,6 +266,7 @@ private:
     bool m_delayRunning;
     int m_delayDone;
     int m_delayTotal;
+    QVariantMap m_nodeDelays;
 };
 
 #endif

@@ -35,6 +35,37 @@ namespace {
 const char kAppVersion[] = "0.1.29";
 const char kApiVersion[] = "1";
 
+bool sameNodeShape(const QVariantMap &left, const QVariantMap &right)
+{
+    const QStringList keys = {
+        QStringLiteral("index"),
+        QStringLiteral("name"),
+        QStringLiteral("type"),
+        QStringLiteral("network"),
+        QStringLiteral("selected"),
+        QStringLiteral("shareable")
+    };
+    for (const QString &key : keys) {
+        if (left.value(key) != right.value(key)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool sameNodeList(const QVariantList &left, const QVariantList &right)
+{
+    if (left.size() != right.size()) {
+        return false;
+    }
+    for (int i = 0; i < left.size(); ++i) {
+        if (!sameNodeShape(left.at(i).toMap(), right.at(i).toMap())) {
+            return false;
+        }
+    }
+    return true;
+}
+
 QString helperPath()
 {
     return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("bin/rayutd"));
@@ -354,6 +385,24 @@ int Controller::delayDone() const
 int Controller::delayTotal() const
 {
     return m_delayTotal;
+}
+
+QVariantMap Controller::nodeDelays() const
+{
+    return m_nodeDelays;
+}
+
+void Controller::rememberDelays(const QVariantList &nodes)
+{
+    for (const QVariant &value : nodes) {
+        const QVariantMap node = value.toMap();
+        m_nodeDelays.insert(node.value(QStringLiteral("name")).toString(), node.value(QStringLiteral("delay")).toInt());
+    }
+}
+
+void Controller::noteDelayProgress()
+{
+    emit delayChanged();
 }
 
 EditLineModel *Controller::editLines() const
@@ -952,7 +1001,7 @@ void Controller::testNode(const QString &id, const QString &name)
     m_delayRunning = response.value(QStringLiteral("running")).toBool();
     m_delayDone = response.value(QStringLiteral("done")).toInt();
     m_delayTotal = response.value(QStringLiteral("total")).toInt();
-    queueStateChanged();
+    noteDelayProgress();
 }
 
 void Controller::testGroup(const QString &id)
@@ -965,7 +1014,7 @@ void Controller::testGroup(const QString &id)
     m_delayRunning = object.value(QStringLiteral("running")).toBool();
     m_delayDone = object.value(QStringLiteral("done")).toInt();
     m_delayTotal = object.value(QStringLiteral("total")).toInt();
-    queueStateChanged();
+    noteDelayProgress();
 }
 
 void Controller::pollGroupDelay(const QString &id)
@@ -987,8 +1036,10 @@ void Controller::pollGroupDelay(const QString &id)
     m_delayTotal = total;
     if (!running) {
         loadNodes(id);
-    } else if (changed) {
-        queueStateChanged();
+        return;
+    }
+    if (changed) {
+        noteDelayProgress();
     }
 }
 
@@ -1143,6 +1194,7 @@ void Controller::loadNodes(const QString &id)
         m_groupNodes.clear();
         m_proxySelectors.clear();
         m_selectorName.clear();
+        m_nodeDelays.clear();
         queueStateChanged();
         return;
     }
@@ -1150,28 +1202,34 @@ void Controller::loadNodes(const QString &id)
     if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("nodes")), QByteArray(), &body, 30000)) {
         m_groupNodes.clear();
         m_proxySelectors.clear();
+        m_nodeDelays.clear();
         queueStateChanged();
         return;
     }
-    applyNodes(body);
-    loadSelectors(id);
+    const bool nodesChanged = applyNodes(body);
+    const bool selectorsChanged = loadSelectors(id);
+    if (!nodesChanged && !selectorsChanged) {
+        noteDelayProgress();
+    }
 }
 
-void Controller::loadSelectors(const QString &id)
+bool Controller::loadSelectors(const QString &id)
 {
     if (id.isEmpty()) {
         m_proxySelectors.clear();
         m_selectorName.clear();
+        m_nodeDelays.clear();
         queueStateChanged();
-        return;
+        return true;
     }
     QByteArray body;
     if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("selectors")), QByteArray(), &body, 30000)) {
         m_proxySelectors.clear();
+        m_nodeDelays.clear();
         queueStateChanged();
-        return;
+        return true;
     }
-    applySelectors(body);
+    return applySelectors(body);
 }
 
 void Controller::applyCatalog(const QByteArray &body, bool reloadNodes)
@@ -1247,7 +1305,7 @@ void Controller::applyCatalog(const QByteArray &body, bool reloadNodes)
     }
 }
 
-void Controller::applyNodes(const QByteArray &body)
+bool Controller::applyNodes(const QByteArray &body)
 {
     const QJsonArray nodes = QJsonDocument::fromJson(body).object().value(QStringLiteral("nodes")).toArray();
     QVariantList list;
@@ -1263,11 +1321,17 @@ void Controller::applyNodes(const QByteArray &body)
         row.insert(QStringLiteral("shareable"), node.value(QStringLiteral("shareable")).toBool());
         list.append(row);
     }
+    if (sameNodeList(m_groupNodes, list)) {
+        rememberDelays(list);
+        return false;
+    }
+    m_nodeDelays.clear();
     m_groupNodes = list;
     queueStateChanged();
+    return true;
 }
 
-void Controller::applySelectors(const QByteArray &body)
+bool Controller::applySelectors(const QByteArray &body)
 {
     const QJsonArray groups = QJsonDocument::fromJson(body).object().value(QStringLiteral("groups")).toArray();
     QVariantList list;
@@ -1317,17 +1381,42 @@ void Controller::applySelectors(const QByteArray &body)
             keep = true;
         }
     }
-    m_proxySelectors = list;
+    QString nextSelector = m_selectorName;
     if (!keep) {
         if (savedHere) {
-            m_selectorName = saved;
+            nextSelector = saved;
         } else if (!trafficName.isEmpty()) {
-            m_selectorName = trafficName;
+            nextSelector = trafficName;
         } else {
-            m_selectorName = !firstManual.isEmpty() ? firstManual : firstName;
+            nextSelector = !firstManual.isEmpty() ? firstManual : firstName;
         }
     }
+    bool same = nextSelector == m_selectorName && m_proxySelectors.size() == list.size();
+    if (same) {
+        for (int i = 0; i < list.size(); ++i) {
+            const QVariantMap current = m_proxySelectors.at(i).toMap();
+            const QVariantMap next = list.at(i).toMap();
+            if (current.value(QStringLiteral("name")) != next.value(QStringLiteral("name"))
+                || current.value(QStringLiteral("type")) != next.value(QStringLiteral("type"))
+                || current.value(QStringLiteral("selectable")) != next.value(QStringLiteral("selectable"))
+                || current.value(QStringLiteral("now")) != next.value(QStringLiteral("now"))
+                || !sameNodeList(current.value(QStringLiteral("nodes")).toList(), next.value(QStringLiteral("nodes")).toList())) {
+                same = false;
+                break;
+            }
+        }
+    }
+    if (same) {
+        for (const QVariant &value : list) {
+            rememberDelays(value.toMap().value(QStringLiteral("nodes")).toList());
+        }
+        return false;
+    }
+    m_nodeDelays.clear();
+    m_proxySelectors = list;
+    m_selectorName = nextSelector;
     queueStateChanged();
+    return true;
 }
 
 bool Controller::postCatalog(const QString &path, const QByteArray &payload, const QString &success, bool reloadNodes)

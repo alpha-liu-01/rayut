@@ -54,6 +54,13 @@ Page {
         return ""
     }
 
+    function shownDelay(node) {
+        var posted = Controller.nodeDelays
+        if (posted && posted[node.name] !== undefined)
+            return posted[node.name]
+        return node.delay
+    }
+
     function filteredNodes() {
         var groups = Controller.proxySelectors
         var rows = []
@@ -363,13 +370,6 @@ Page {
             }
         }
 
-        Label {
-            Layout.fillWidth: true
-            Layout.margins: units.gu(2)
-            visible: Controller.delayRunning
-            text: "测速 " + Controller.delayDone + "/" + Controller.delayTotal
-        }
-
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -381,6 +381,8 @@ Page {
                 snapMode: ListView.SnapOneItem
                 boundsBehavior: Flickable.StopAtBounds
                 highlightRangeMode: ListView.StrictlyEnforceRange
+                highlightMoveDuration: 200
+                highlightResizeDuration: 0
                 model: Controller.profileGroups
                 property real originX: 0
                 onMovementStarted: originX = contentX
@@ -482,7 +484,7 @@ Page {
                             width: parent.width
                             elide: Text.ElideRight
                             color: theme.palette.normal.backgroundText
-                            text: modelData.type + (modelData.network ? "  " + modelData.network : "") + (homeRoot.delayText(modelData.delay) !== "" ? "  " + homeRoot.delayText(modelData.delay) : "")
+                            text: modelData.type + (modelData.network ? "  " + modelData.network : "") + (homeRoot.delayText(homeRoot.shownDelay(modelData)) !== "" ? "  " + homeRoot.delayText(homeRoot.shownDelay(modelData)) : "")
                         }
                     }
 
@@ -585,6 +587,18 @@ Page {
                         }
                     }
                 }
+            }
+
+            Label {
+                anchors {
+                    top: parent.top
+                    right: parent.right
+                    margins: units.gu(1)
+                }
+                z: 2
+                visible: Controller.delayRunning
+                text: "测速 " + Controller.delayDone + "/" + Controller.delayTotal
+                color: theme.palette.normal.backgroundText
             }
 
             Label {

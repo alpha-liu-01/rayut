@@ -241,6 +241,87 @@ MainView {
     }
 
     Component {
+        id: settingsPage
+
+        Page {
+            header: PageHeader {
+                id: settingsHeader
+                title: "设置"
+            }
+
+            Flickable {
+                anchors {
+                    top: settingsHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                contentHeight: settingsColumn.height + units.gu(4)
+                clip: true
+
+                Column {
+                    id: settingsColumn
+                    width: parent.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(2)
+
+                    Row {
+                        width: parent.width
+                        spacing: units.gu(1)
+
+                        Label {
+                            width: parent.width - settingsKill.width - units.gu(1)
+                            height: settingsKill.height
+                            verticalAlignment: Text.AlignVCenter
+                            wrapMode: Text.Wrap
+                            text: "断开即拦截"
+                        }
+
+                        Switch {
+                            id: settingsKill
+                            checked: Controller.killSwitch
+                            onClicked: Controller.setKillSwitch(!Controller.killSwitch)
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: units.gu(1)
+
+                        Label {
+                            width: parent.width - settingsLan.width - units.gu(1)
+                            height: settingsLan.height
+                            verticalAlignment: Text.AlignVCenter
+                            wrapMode: Text.Wrap
+                            text: "局域网共享"
+                        }
+
+                        Switch {
+                            id: settingsLan
+                            checked: Controller.allowLan
+                            onClicked: Controller.setAllowLan(!Controller.allowLan)
+                        }
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: "热点和 USB 共享出去的设备不走代理。要登录 Wi-Fi 门户时，先关闭代理。"
+                    }
+                }
+            }
+        }
+    }
+
+    Component {
         id: aboutPage
 
         Page {
@@ -880,6 +961,8 @@ MainView {
                 stack.push(sessionPage)
             else if (page === "about")
                 stack.push(aboutPage)
+            else if (page === "settings")
+                stack.push(settingsPage)
             else if (page === "core")
                 stack.push(corePage)
             else if (page === "editor") {
@@ -894,18 +977,47 @@ MainView {
     Item {
         id: drawerLayer
         anchors.fill: parent
-        visible: root.drawerOpen
+        clip: true
+        visible: root.drawerOpen || drawerPanel.x > -drawerPanel.width + 1
         z: 10
+        property bool ready: false
+
+        Component.onCompleted: ready = true
 
         MouseArea {
             anchors.fill: parent
+            enabled: root.drawerOpen
             onClicked: root.drawerOpen = false
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#000000"
+                opacity: root.drawerOpen ? 0.35 : 0
+
+                Behavior on opacity {
+                    enabled: drawerLayer.ready
+                    NumberAnimation {
+                        duration: 200
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
         }
 
         Rectangle {
-            width: parent.width * 0.75
+            id: drawerPanel
+            width: parent.width * 0.78
             height: parent.height
+            x: root.drawerOpen ? 0 : -width
             color: theme.palette.normal.background
+
+            Behavior on x {
+                enabled: drawerLayer.ready
+                NumberAnimation {
+                    duration: 200
+                    easing.type: Easing.OutCubic
+                }
+            }
 
             MouseArea {
                 anchors.fill: parent
@@ -932,57 +1044,9 @@ MainView {
                     font.pixelSize: FontUtils.sizeToPixels("large")
                 }
 
-                Row {
-                    width: parent.width
-                    spacing: units.gu(1)
-
-                    Label {
-                        width: parent.width - killSwitch.width - units.gu(1)
-                        height: killSwitch.height
-                        verticalAlignment: Text.AlignVCenter
-                        text: "断开即拦截"
-                    }
-
-                    Switch {
-                        id: killSwitch
-                        checked: Controller.killSwitch
-                        onClicked: Controller.setKillSwitch(!Controller.killSwitch)
-                    }
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: units.gu(1)
-
-                    Label {
-                        width: parent.width - lanSwitch.width - units.gu(1)
-                        height: lanSwitch.height
-                        verticalAlignment: Text.AlignVCenter
-                        text: "局域网共享"
-                    }
-
-                    Switch {
-                        id: lanSwitch
-                        checked: Controller.allowLan
-                        onClicked: Controller.setAllowLan(!Controller.allowLan)
-                    }
-                }
-
-                Label {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
-                }
-
-                Label {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    color: theme.palette.normal.backgroundText
-                    text: "热点和 USB 共享出去的设备不走代理。要登录 Wi-Fi 门户时，先关闭代理。"
-                }
-
                 ListModel {
                     id: drawerPages
+                    ListElement { iconName: "settings"; label: "设置"; page: "settings" }
                     ListElement { iconName: "stock_application"; label: "核心"; page: "core" }
                     ListElement { iconName: "view-list-symbolic"; label: "订阅分组"; page: "groups" }
                     ListElement { iconName: "note"; label: "规则模板"; page: "rules" }
