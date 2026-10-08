@@ -372,6 +372,39 @@ MainView {
     }
 
     Component {
+        id: aboutPage
+
+        Page {
+            header: PageHeader {
+                id: aboutHeader
+                title: "关于"
+            }
+
+            Column {
+                anchors {
+                    top: aboutHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    margins: units.gu(2)
+                }
+                spacing: units.gu(2)
+
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: Controller.ipv6Text
+                }
+
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: Controller.versionText
+                }
+            }
+        }
+    }
+
+    Component {
         id: sessionPage
 
         Page {
@@ -976,6 +1009,8 @@ MainView {
                 stack.push(profilePage)
             else if (page === "session")
                 stack.push(sessionPage)
+            else if (page === "about")
+                stack.push(aboutPage)
             else if (page === "editor") {
                 root.pendingEditorGroup = Controller.viewedGroup
                 root.pendingEditorIndex = -1
@@ -1058,6 +1093,15 @@ MainView {
                     text: "日志和当前连接"
                     onClicked: {
                         drawerNav.page = "session"
+                        drawerNav.start()
+                    }
+                }
+
+                Button {
+                    width: parent.width
+                    text: "关于"
+                    onClicked: {
+                        drawerNav.page = "about"
                         drawerNav.start()
                     }
                 }

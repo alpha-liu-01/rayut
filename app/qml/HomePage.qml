@@ -520,6 +520,12 @@ Page {
             Label {
                 width: parent.width
                 wrapMode: Text.Wrap
+                text: Controller.ipv6Text
+            }
+
+            Label {
+                width: parent.width
+                wrapMode: Text.Wrap
                 visible: Controller.message !== ""
                 text: Controller.message
             }

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -22,7 +23,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.18"
+	HelperVersion = "0.1.19"
 	APIVersion    = "1"
 )
 
@@ -167,6 +168,9 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 		_ = route.Recover()
 		http.Error(w, "tun failed", http.StatusInternalServerError)
 		return
+	}
+	if err := route.PinIPv6Gateways(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
 	writeJSON(w, s.snapshot())
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
 	"github.com/alpha-liu-01/rayut/daemon/internal/mihomoapi"
+	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 	"github.com/alpha-liu-01/rayut/daemon/internal/traffic"
 )
 
@@ -43,6 +44,7 @@ func (s *Server) sampleTraffic() {
 		s.traffic.Account(traffic.Sample{}, 0, 0)
 		return
 	}
+	_ = route.PinIPv6Gateways()
 	snap, err := s.readSessionTraffic(context.Background())
 	if err != nil {
 		return

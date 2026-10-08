@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
+	"github.com/alpha-liu-01/rayut/daemon/internal/profile"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,6 +32,7 @@ func prepareRunConfig() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	profile.EnsureIPv6(root)
 	overlayController(root, secret)
 	out, err := yaml.Marshal(root)
 	if err != nil {

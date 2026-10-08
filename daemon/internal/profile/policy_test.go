@@ -37,6 +37,9 @@ func TestPrepareAllowsLoopbackAndAddsTun(t *testing.T) {
 	if !strings.Contains(text, "stack: gvisor") || !strings.Contains(text, "auto-redir: false") {
 		t.Fatalf("missing tun base: %s", text)
 	}
+	if !strings.Contains(text, "ipv6: true") || !strings.Contains(text, IPv6TunAddress) || !strings.Contains(text, IPv6FakeIPRange) {
+		t.Fatalf("ipv6 was not forced: %s", text)
+	}
 	if strings.Contains(text, "0.0.0.0") || strings.Contains(text, "hidden") {
 		t.Fatalf("control settings remained: %s", text)
 	}

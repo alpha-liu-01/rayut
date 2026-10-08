@@ -25,6 +25,53 @@ func Recover() error {
 	return flushTable("6")
 }
 
+// IPv6Gateways returns the via addresses of routes in an `ip -6 route show`
+// listing that egress through device. The listing is not logged.
+func IPv6Gateways(show, device string) []string {
+	seen := map[string]bool{}
+	var gateways []string
+	for _, line := range strings.Split(show, "\n") {
+		fields := strings.Fields(line)
+		via := fieldValue(fields, "via")
+		dev := fieldValue(fields, "dev")
+		if via == "" || dev != device || seen[via] {
+			continue
+		}
+		seen[via] = true
+		gateways = append(gateways, via)
+	}
+	return gateways
+}
+
+func fieldValue(fields []string, key string) string {
+	for i := 0; i < len(fields)-1; i++ {
+		if fields[i] == key {
+			return fields[i+1]
+		}
+	}
+	return ""
+}
+
+// PinIPv6Gateways makes the TUN IPv6 next hop permanent. On this kernel a
+// via-route never finishes neighbor discovery, so the packet never reaches
+// the core. Only Meta is touched.
+func PinIPv6Gateways() error {
+	out, err := exec.Command("ip", "-6", "route", "show", "table", "2022").CombinedOutput()
+	text := string(out)
+	if err != nil {
+		if strings.Contains(text, "FIB table does not exist") || strings.TrimSpace(text) == "" {
+			return nil
+		}
+		return fmt.Errorf("show ipv6 table 2022")
+	}
+	for _, gateway := range IPv6Gateways(text, "Meta") {
+		if err := exec.Command("ip", "-6", "neigh", "replace", gateway, "dev", "Meta", "nud", "permanent").Run(); err != nil {
+			return fmt.Errorf("pin ipv6 gateway")
+		}
+	}
+	return nil
+}
+
 func deleteOwned(family string) error {
 	for i := 0; i < 40; i++ {
 		out, err := ruleShow(family)

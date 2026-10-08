@@ -282,13 +282,38 @@ func applyBase(root map[string]any) {
 		root["dns"] = map[string]any{
 			"enable":                  true,
 			"listen":                  "127.0.0.1:1053",
-			"ipv6":                    true,
 			"enhanced-mode":           "fake-ip",
 			"fake-ip-range":           "198.18.0.1/16",
 			"nameserver":              []any{"1.1.1.1"},
 			"proxy-server-nameserver": []any{"1.1.1.1"},
 		}
 	}
+	EnsureIPv6(root)
+}
+
+// IPv6TunAddress is the TUN address. It sits outside IPv6FakeIPRange so a
+// fake-ip is not treated as the tunnel itself.
+const IPv6TunAddress = "fdfe:dcba:9877::1/126"
+
+// IPv6FakeIPRange is the DNS fake-ip pool for AAAA answers.
+const IPv6FakeIPRange = "fdfe:dcba:9876::1/64"
+
+// EnsureIPv6 turns IPv6 on for the running config. Subscriptions sometimes
+// set ipv6 false; that removes the TUN address and leaves an empty policy route.
+func EnsureIPv6(root map[string]any) {
+	root["ipv6"] = true
+	tun, _ := root["tun"].(map[string]any)
+	if tun == nil {
+		tun = map[string]any{}
+		root["tun"] = tun
+	}
+	tun["inet6-address"] = []any{IPv6TunAddress}
+	dns, _ := root["dns"].(map[string]any)
+	if dns == nil {
+		return
+	}
+	dns["ipv6"] = true
+	dns["fake-ip-range6"] = IPv6FakeIPRange
 }
 
 func ensureRouting(root map[string]any) {
