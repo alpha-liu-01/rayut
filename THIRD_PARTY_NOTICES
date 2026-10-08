@@ -1,0 +1,20 @@
+Rayut includes a Go translation of share-link parsing from v2rayNG.
+
+Project: v2rayNG
+Source: https://github.com/2dust/v2rayNG
+Revision: 6fe3893 (2026-10-06)
+License: GNU General Public License version 3
+Copyright: 2dust and contributors
+
+Files translated, parsing only:
+
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/FmtBase.kt
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/ShadowsocksFmt.kt
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/VmessFmt.kt
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/VlessFmt.kt
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/TrojanFmt.kt
+- V2rayNG/app/src/main/java/com/v2ray/ang/fmt/Hysteria2Fmt.kt
+
+The translation is daemon/internal/profile/sharelink.go. Android interface code was not copied.
+
+That revision defines the tuic:// scheme and comments out the TUIC parser. The TUIC query mapping in sharelink.go uses the same query style as FmtBase and the field names of mihomo v1.19.32 TuicOption. mihomo is a separate program shipped as a binary; its license is recorded with that binary's upstream, MetaCubeX/mihomo.

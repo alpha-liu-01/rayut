@@ -19,7 +19,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.10";
+const char kAppVersion[] = "0.1.11";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -427,6 +427,12 @@ QString Controller::messageFor(const QString &code) const
     }
     if (code == QLatin1String("invalid yaml") || code == QLatin1String("invalid config")) {
         return QStringLiteral("配置校验失败");
+    }
+    if (code == QLatin1String("invalid link")) {
+        return QStringLiteral("链接不完整");
+    }
+    if (code == QLatin1String("unrecognized link")) {
+        return QStringLiteral("无法识别的链接");
     }
     if (code == QLatin1String("file scheme")) {
         return QStringLiteral("不允许 file 地址");

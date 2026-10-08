@@ -495,7 +495,7 @@ MainView {
                         id: yamlField
                         Layout.fillWidth: true
                         Layout.preferredHeight: units.gu(18)
-                        placeholderText: "本地 YAML"
+                        placeholderText: "本地 YAML 或一条分享链接"
                         enabled: Controller.helperRunning
                     }
 

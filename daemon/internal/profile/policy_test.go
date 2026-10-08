@@ -69,7 +69,8 @@ func TestPrepareKeepsProxyGroups(t *testing.T) {
 }
 
 func TestPrepareKeepsShareLinkPayload(t *testing.T) {
-	link := "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none#lab\n"
+	link := "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none#lab\n" +
+		"vless://00000000-0000-0000-0000-000000000000@127.0.0.1:8443?encryption=none#lab2\n"
 	doc, err := prepare(link)
 	if err != nil {
 		t.Fatal(err)

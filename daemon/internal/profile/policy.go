@@ -56,6 +56,21 @@ func prepare(content string) (document, error) {
 		}
 		return document{YAML: out}, nil
 	}
+	if link, ok := oneShareLine(raw); ok {
+		proxy, err := parseShareLink(link)
+		if err != nil {
+			return document{}, err
+		}
+		if proxy != nil {
+			doc := map[string]any{"proxies": []any{proxy}}
+			applyBase(doc)
+			out, err := yaml.Marshal(doc)
+			if err != nil {
+				return document{}, errCode("invalid yaml")
+			}
+			return document{YAML: out}, nil
+		}
+	}
 	if bytes.Contains(raw, []byte("://")) {
 		doc := map[string]any{
 			"proxy-providers": map[string]any{
@@ -81,6 +96,14 @@ func prepare(content string) (document, error) {
 		return document{YAML: out, Payload: raw}, nil
 	}
 	return document{}, errCode("invalid yaml")
+}
+
+func oneShareLine(raw []byte) (string, bool) {
+	text := strings.TrimSpace(string(raw))
+	if text == "" || strings.Contains(text, "\n") || !strings.Contains(text, "://") {
+		return "", false
+	}
+	return text, true
 }
 
 func decodeBase64YAML(raw []byte) ([]byte, bool) {
