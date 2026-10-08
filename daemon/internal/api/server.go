@@ -22,7 +22,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.16"
+	HelperVersion = "0.1.18"
 	APIVersion    = "1"
 )
 
@@ -33,6 +33,15 @@ type Server struct {
 	groups  groupAPI
 	session sessionAPI
 	traffic *traffic.Ledger
+	delays  delayState
+}
+
+type delayState struct {
+	mu      sync.Mutex
+	group   string
+	running bool
+	done    int
+	total   int
 }
 
 func New() (*Server, error) {
@@ -57,6 +66,8 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
 	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
 	mux.HandleFunc("/v1/profiles", s.auth(s.profiles))
+	mux.HandleFunc("/v1/groups", s.auth(s.groupsRoot))
+	mux.HandleFunc("/v1/groups/", s.auth(s.groupItem))
 	mux.HandleFunc("/v1/profiles/import-content", s.auth(s.importContent))
 	mux.HandleFunc("/v1/profiles/import-url", s.auth(s.importURL))
 	mux.HandleFunc("/v1/profiles/activate", s.auth(s.activateProfile))
@@ -137,6 +148,10 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := route.Recover(); err != nil {
 		http.Error(w, "recover failed", http.StatusInternalServerError)
+		return
+	}
+	if err := s.profileStore().SyncActive(); err != nil {
+		http.Error(w, "start failed", http.StatusInternalServerError)
 		return
 	}
 	if err := core.Start(); err != nil {

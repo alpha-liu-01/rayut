@@ -4,7 +4,9 @@
 
 #include "qrscan.h"
 
+#include <QClipboard>
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QImage>
 #include <QImageReader>
 
@@ -25,7 +27,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.16";
+const char kAppVersion[] = "0.1.18";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -163,6 +165,9 @@ Controller::Controller(QObject *parent)
     , m_downloadRate(0)
     , m_totalUpload(0)
     , m_totalDownload(0)
+    , m_delayRunning(false)
+    , m_delayDone(0)
+    , m_delayTotal(0)
 {
 }
 
@@ -261,6 +266,61 @@ qint64 Controller::totalDownload() const
 QVariantList Controller::trafficSamples() const
 {
     return m_trafficSamples;
+}
+
+QVariantList Controller::profileGroups() const
+{
+    return m_profileGroups;
+}
+
+QVariantList Controller::groupNodes() const
+{
+    return m_groupNodes;
+}
+
+QVariantList Controller::proxySelectors() const
+{
+    return m_proxySelectors;
+}
+
+QString Controller::selectorName() const
+{
+    return m_selectorName;
+}
+
+QString Controller::viewedGroup() const
+{
+    return m_viewedGroup;
+}
+
+QString Controller::activeGroup() const
+{
+    return m_activeGroup;
+}
+
+QString Controller::groupKind() const
+{
+    return m_groupKind;
+}
+
+QString Controller::groupURL() const
+{
+    return m_groupURL;
+}
+
+bool Controller::delayRunning() const
+{
+    return m_delayRunning;
+}
+
+int Controller::delayDone() const
+{
+    return m_delayDone;
+}
+
+int Controller::delayTotal() const
+{
+    return m_delayTotal;
 }
 
 EditLineModel *Controller::editLines() const
@@ -374,6 +434,14 @@ void Controller::refresh()
         m_totalUpload = 0;
         m_totalDownload = 0;
         m_trafficSamples.clear();
+        m_profileGroups.clear();
+        m_groupNodes.clear();
+        m_proxySelectors.clear();
+        m_selectorName.clear();
+        m_viewedGroup.clear();
+        m_activeGroup.clear();
+        m_groupKind.clear();
+        m_groupURL.clear();
         if (changed) {
             queueStateChanged();
         }
@@ -381,6 +449,7 @@ void Controller::refresh()
     }
     applyStatus(body);
     refreshTraffic();
+    refreshProfileGroups();
     QByteArray profile;
     if (request(QStringLiteral("GET"), QStringLiteral("/v1/profiles"), QByteArray(), &profile, 30000)) {
         applyProfile(profile);
@@ -482,7 +551,7 @@ void Controller::importContent(const QString &content)
     QJsonObject object;
     object.insert(QStringLiteral("name"), QStringLiteral("本地"));
     object.insert(QStringLiteral("content"), content);
-    postProfile(QStringLiteral("/v1/profiles/import-content"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已校验，当前配置未替换"));
+    postCatalog(QStringLiteral("/v1/groups/import-content"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已导入"), true);
 }
 
 static int decodeGrayImage(const QImage &image, char *out, int outCap)
@@ -557,7 +626,478 @@ void Controller::importURL(const QString &url)
 {
     QJsonObject object;
     object.insert(QStringLiteral("url"), url);
-    postProfile(QStringLiteral("/v1/profiles/import-url"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已校验，当前配置未替换"));
+    postCatalog(QStringLiteral("/v1/groups/import-url"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已导入"), true);
+}
+
+QString Controller::clipboardText() const
+{
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) {
+        return QString();
+    }
+    return clipboard->text().trimmed();
+}
+
+void Controller::importClipboard()
+{
+    const QString text = clipboardText();
+    if (text.isEmpty()) {
+        setMessage(QStringLiteral("剪贴板是空的"));
+        return;
+    }
+    importContent(text);
+}
+
+void Controller::importClipboardScheme(const QString &scheme)
+{
+    const QString text = clipboardText();
+    const QString lower = text.toLower();
+    bool matches = lower.startsWith(scheme.toLower() + QStringLiteral("://"));
+    if (scheme == QLatin1String("hysteria2") && lower.startsWith(QStringLiteral("hy2://"))) {
+        matches = true;
+    }
+    if (!matches) {
+        setMessage(QStringLiteral("请先复制一条该类型的链接"));
+        return;
+    }
+    importContent(text);
+}
+
+QString Controller::groupPath(const QString &id, const QString &action) const
+{
+    QString path = QStringLiteral("/v1/groups/") + QString::fromUtf8(QUrl::toPercentEncoding(id));
+    if (!action.isEmpty()) {
+        path += QLatin1Char('/') + action;
+    }
+    return path;
+}
+
+void Controller::refreshProfileGroups()
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/groups"), QByteArray(), &body, 30000)) {
+        if (!m_helperRunning) {
+            m_profileGroups.clear();
+            m_groupNodes.clear();
+            m_proxySelectors.clear();
+            m_selectorName.clear();
+            m_viewedGroup.clear();
+            m_activeGroup.clear();
+            m_groupKind.clear();
+            queueStateChanged();
+        }
+        return;
+    }
+    applyCatalog(body, true);
+}
+
+void Controller::showGroup(const QString &id)
+{
+    if (id.isEmpty() || id == m_viewedGroup) {
+        return;
+    }
+    m_viewedGroup = id;
+    for (const QVariant &value : m_profileGroups) {
+        const QVariantMap group = value.toMap();
+        if (group.value(QStringLiteral("id")).toString() != id) {
+            continue;
+        }
+        m_groupKind = group.value(QStringLiteral("kind")).toString();
+        const QString templ = group.value(QStringLiteral("template")).toString();
+        if (m_ruleTemplate != templ) {
+            m_ruleTemplate = templ;
+        }
+        break;
+    }
+    queueStateChanged();
+    loadNodes(id);
+}
+
+void Controller::useGroup(const QString &id)
+{
+    if (m_tunRunning) {
+        setMessage(QStringLiteral("请先关闭代理"));
+        return;
+    }
+    postCatalog(groupPath(id, QStringLiteral("use")), QByteArrayLiteral("{}"), QStringLiteral("已切换"), true);
+}
+
+void Controller::refreshGroup(const QString &id)
+{
+    postCatalog(groupPath(id, QStringLiteral("refresh")), QByteArrayLiteral("{}"), QStringLiteral("已刷新"), true);
+}
+
+void Controller::deleteGroup(const QString &id)
+{
+    postCatalog(groupPath(id, QStringLiteral("delete")), QByteArrayLiteral("{}"), QStringLiteral("已删除"), true);
+}
+
+void Controller::clearGroup(const QString &id)
+{
+    postNodes(groupPath(id, QStringLiteral("clear")), QByteArrayLiteral("{}"), QStringLiteral("已删除节点"));
+}
+
+void Controller::deleteNode(const QString &id, int index)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("index"), index);
+    postNodes(groupPath(id, QStringLiteral("node-delete")), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已删除"));
+}
+
+void Controller::showSelector(const QString &name)
+{
+    if (name.isEmpty() || name == m_selectorName) {
+        return;
+    }
+    m_selectorName = name;
+    queueStateChanged();
+}
+
+void Controller::selectNode(const QString &id, const QString &group, const QString &name)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("group"), group);
+    object.insert(QStringLiteral("name"), name);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("select")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 20000)) {
+        return;
+    }
+    loadSelectors(id);
+    setMessage(QStringLiteral("已选择"));
+}
+
+void Controller::testNode(const QString &id, const QString &name)
+{
+    setMessage(QStringLiteral("正在测试延迟"));
+    QJsonObject object;
+    object.insert(QStringLiteral("name"), name);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("delay")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 20000)) {
+        return;
+    }
+    loadNodes(id);
+    setMessage(QString());
+}
+
+void Controller::testGroup(const QString &id)
+{
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("delay-all")), QByteArrayLiteral("{}"), &body, 15000)) {
+        return;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    m_delayRunning = object.value(QStringLiteral("running")).toBool();
+    m_delayDone = object.value(QStringLiteral("done")).toInt();
+    m_delayTotal = object.value(QStringLiteral("total")).toInt();
+    queueStateChanged();
+}
+
+void Controller::pollGroupDelay(const QString &id)
+{
+    if (id.isEmpty()) {
+        return;
+    }
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("delay-all")), QByteArray(), &body, 3000)) {
+        return;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    const bool running = object.value(QStringLiteral("running")).toBool();
+    const int done = object.value(QStringLiteral("done")).toInt();
+    const int total = object.value(QStringLiteral("total")).toInt();
+    const bool changed = running != m_delayRunning || done != m_delayDone || total != m_delayTotal;
+    m_delayRunning = running;
+    m_delayDone = done;
+    m_delayTotal = total;
+    if (!running) {
+        loadNodes(id);
+    } else if (changed) {
+        queueStateChanged();
+    }
+}
+
+void Controller::copyExport(const QByteArray &body)
+{
+    const QString text = QJsonDocument::fromJson(body).object().value(QStringLiteral("text")).toString();
+    if (text.trimmed().isEmpty()) {
+        setMessage(QStringLiteral("没有可导出的分享链接"));
+        return;
+    }
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (!clipboard) {
+        setMessage(QStringLiteral("请求失败"));
+        return;
+    }
+    clipboard->setText(text);
+    setMessage(QStringLiteral("已复制"));
+}
+
+void Controller::exportGroup(const QString &id)
+{
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("export")), QByteArrayLiteral("{}"), &body, 15000)) {
+        return;
+    }
+    copyExport(body);
+}
+
+void Controller::exportNode(const QString &id, const QString &name)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("name"), name);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("export")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 15000)) {
+        return;
+    }
+    copyExport(body);
+}
+
+void Controller::saveGroup(const QString &id, const QString &name, const QString &url)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("name"), name);
+    if (!url.trimmed().isEmpty()) {
+        object.insert(QStringLiteral("url"), url);
+    }
+    postCatalog(groupPath(id, QString()), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已保存"), false);
+    m_groupURL = url;
+}
+
+void Controller::loadGroupDetail(const QString &id)
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), groupPath(id, QString()), QByteArray(), &body, 15000)) {
+        m_groupURL.clear();
+        setMessage(messageFor(QString::fromUtf8(body).trimmed()));
+        return;
+    }
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    m_groupURL = object.value(QStringLiteral("url")).toString();
+    const QJsonObject group = object.value(QStringLiteral("group")).toObject();
+    if (!group.isEmpty()) {
+        m_groupKind = group.value(QStringLiteral("kind")).toString();
+        m_ruleTemplate = group.value(QStringLiteral("template")).toString();
+    }
+    queueStateChanged();
+}
+
+void Controller::restartProxy()
+{
+    if (m_versionMismatch) {
+        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        return;
+    }
+    if (m_tunRunning) {
+        disableTun();
+        if (m_tunRunning) {
+            return;
+        }
+    }
+    enableTun();
+}
+
+void Controller::loadNodes(const QString &id)
+{
+    if (id.isEmpty()) {
+        m_groupNodes.clear();
+        m_proxySelectors.clear();
+        m_selectorName.clear();
+        queueStateChanged();
+        return;
+    }
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("nodes")), QByteArray(), &body, 30000)) {
+        m_groupNodes.clear();
+        m_proxySelectors.clear();
+        queueStateChanged();
+        return;
+    }
+    applyNodes(body);
+    loadSelectors(id);
+}
+
+void Controller::loadSelectors(const QString &id)
+{
+    if (id.isEmpty()) {
+        m_proxySelectors.clear();
+        m_selectorName.clear();
+        queueStateChanged();
+        return;
+    }
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("selectors")), QByteArray(), &body, 30000)) {
+        m_proxySelectors.clear();
+        queueStateChanged();
+        return;
+    }
+    applySelectors(body);
+}
+
+void Controller::applyCatalog(const QByteArray &body, bool reloadNodes)
+{
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    const QJsonArray groups = object.value(QStringLiteral("groups")).toArray();
+    QVariantList list;
+    QString active;
+    bool viewedHere = false;
+    QHash<QString, int> previousCounts;
+    for (const QVariant &value : m_profileGroups) {
+        const QVariantMap group = value.toMap();
+        previousCounts.insert(group.value(QStringLiteral("id")).toString(), group.value(QStringLiteral("count")).toInt());
+    }
+    QString added;
+    QString grown;
+    int grownCount = 0;
+    for (const QJsonValue &value : groups) {
+        const QJsonObject group = value.toObject();
+        QVariantMap row;
+        const QString id = group.value(QStringLiteral("id")).toString();
+        const int count = group.value(QStringLiteral("count")).toInt();
+        row.insert(QStringLiteral("id"), id);
+        row.insert(QStringLiteral("name"), group.value(QStringLiteral("name")).toString());
+        row.insert(QStringLiteral("kind"), group.value(QStringLiteral("kind")).toString());
+        row.insert(QStringLiteral("count"), count);
+        row.insert(QStringLiteral("active"), group.value(QStringLiteral("active")).toBool());
+        row.insert(QStringLiteral("template"), group.value(QStringLiteral("template")).toString());
+        list.append(row);
+        if (group.value(QStringLiteral("active")).toBool()) {
+            active = id;
+        }
+        if (id == m_viewedGroup) {
+            viewedHere = true;
+        }
+        if (!previousCounts.isEmpty() && !previousCounts.contains(id)) {
+            added = id;
+        }
+        if (previousCounts.contains(id) && count > previousCounts.value(id)) {
+            grown = id;
+            grownCount++;
+        }
+    }
+    if (!object.value(QStringLiteral("active")).toString().isEmpty()) {
+        active = object.value(QStringLiteral("active")).toString();
+    }
+    const QString oldViewed = m_viewedGroup;
+    m_profileGroups = list;
+    m_activeGroup = active;
+    if (!added.isEmpty()) {
+        m_viewedGroup = added;
+        viewedHere = true;
+    } else if (grownCount == 1) {
+        m_viewedGroup = grown;
+        viewedHere = true;
+    }
+    if (!viewedHere) {
+        m_viewedGroup = !active.isEmpty() ? active : (list.isEmpty() ? QString() : list.first().toMap().value(QStringLiteral("id")).toString());
+    }
+    m_groupKind.clear();
+    for (const QVariant &value : m_profileGroups) {
+        const QVariantMap group = value.toMap();
+        if (group.value(QStringLiteral("id")).toString() != m_viewedGroup) {
+            continue;
+        }
+        m_groupKind = group.value(QStringLiteral("kind")).toString();
+        m_ruleTemplate = group.value(QStringLiteral("template")).toString();
+        break;
+    }
+    queueStateChanged();
+    if (reloadNodes || oldViewed != m_viewedGroup || !added.isEmpty()) {
+        loadNodes(m_viewedGroup);
+    }
+}
+
+void Controller::applyNodes(const QByteArray &body)
+{
+    const QJsonArray nodes = QJsonDocument::fromJson(body).object().value(QStringLiteral("nodes")).toArray();
+    QVariantList list;
+    for (const QJsonValue &value : nodes) {
+        const QJsonObject node = value.toObject();
+        QVariantMap row;
+        row.insert(QStringLiteral("index"), node.value(QStringLiteral("index")).toInt());
+        row.insert(QStringLiteral("name"), node.value(QStringLiteral("name")).toString());
+        row.insert(QStringLiteral("type"), node.value(QStringLiteral("type")).toString());
+        row.insert(QStringLiteral("network"), node.value(QStringLiteral("network")).toString());
+        row.insert(QStringLiteral("delay"), node.value(QStringLiteral("delay")).toInt());
+        row.insert(QStringLiteral("selected"), node.value(QStringLiteral("selected")).toBool());
+        row.insert(QStringLiteral("shareable"), node.value(QStringLiteral("shareable")).toBool());
+        list.append(row);
+    }
+    m_groupNodes = list;
+    queueStateChanged();
+}
+
+void Controller::applySelectors(const QByteArray &body)
+{
+    const QJsonArray groups = QJsonDocument::fromJson(body).object().value(QStringLiteral("groups")).toArray();
+    QVariantList list;
+    bool keep = false;
+    QString firstManual;
+    QString firstName;
+    for (const QJsonValue &value : groups) {
+        const QJsonObject group = value.toObject();
+        const QString name = group.value(QStringLiteral("name")).toString();
+        QVariantMap row;
+        row.insert(QStringLiteral("name"), name);
+        row.insert(QStringLiteral("type"), group.value(QStringLiteral("type")).toString());
+        row.insert(QStringLiteral("selectable"), group.value(QStringLiteral("selectable")).toBool());
+        row.insert(QStringLiteral("now"), group.value(QStringLiteral("now")).toString());
+        QVariantList nodes;
+        for (const QJsonValue &nodeValue : group.value(QStringLiteral("nodes")).toArray()) {
+            const QJsonObject node = nodeValue.toObject();
+            QVariantMap item;
+            item.insert(QStringLiteral("index"), node.value(QStringLiteral("index")).toInt());
+            item.insert(QStringLiteral("name"), node.value(QStringLiteral("name")).toString());
+            item.insert(QStringLiteral("type"), node.value(QStringLiteral("type")).toString());
+            item.insert(QStringLiteral("network"), node.value(QStringLiteral("network")).toString());
+            item.insert(QStringLiteral("delay"), node.value(QStringLiteral("delay")).toInt());
+            item.insert(QStringLiteral("selected"), node.value(QStringLiteral("selected")).toBool());
+            item.insert(QStringLiteral("shareable"), node.value(QStringLiteral("shareable")).toBool());
+            nodes.append(item);
+        }
+        row.insert(QStringLiteral("nodes"), nodes);
+        list.append(row);
+        if (firstName.isEmpty()) {
+            firstName = name;
+        }
+        if (firstManual.isEmpty() && group.value(QStringLiteral("selectable")).toBool()) {
+            firstManual = name;
+        }
+        if (name == m_selectorName) {
+            keep = true;
+        }
+    }
+    m_proxySelectors = list;
+    if (!keep) {
+        m_selectorName = !firstManual.isEmpty() ? firstManual : firstName;
+    }
+    queueStateChanged();
+}
+
+bool Controller::postCatalog(const QString &path, const QByteArray &payload, const QString &success, bool reloadNodes)
+{
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), path, payload, &body, 60000)) {
+        return false;
+    }
+    applyCatalog(body, reloadNodes);
+    setMessage(success);
+    return true;
+}
+
+bool Controller::postNodes(const QString &path, const QByteArray &payload, const QString &success)
+{
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), path, payload, &body, 60000)) {
+        return false;
+    }
+    applyNodes(body);
+    loadSelectors(m_viewedGroup);
+    QByteArray groups;
+    if (request(QStringLiteral("GET"), QStringLiteral("/v1/groups"), QByteArray(), &groups, 30000)) {
+        applyCatalog(groups, false);
+    }
+    setMessage(success);
+    return true;
 }
 
 void Controller::activateProfile()
@@ -572,15 +1112,36 @@ void Controller::refreshProfile()
 
 void Controller::applyRuleTemplate(const QString &id)
 {
+    if (m_viewedGroup.isEmpty()) {
+        setMessage(QStringLiteral("没有这个分组"));
+        return;
+    }
+    if (m_viewedGroup == m_activeGroup && m_tunRunning) {
+        setMessage(QStringLiteral("请先关闭代理"));
+        return;
+    }
     QJsonObject object;
     object.insert(QStringLiteral("id"), id);
-    postProfile(QStringLiteral("/v1/rule-templates"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已切换规则"));
+    postCatalog(groupPath(m_viewedGroup, QStringLiteral("template")), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已切换规则"), false);
 }
 
 void Controller::loadProfileDocument()
 {
+    loadGroupDocument(m_viewedGroup);
+}
+
+void Controller::loadGroupDocument(const QString &id)
+{
+    m_editGroup = id;
+    if (id.isEmpty()) {
+        m_editLines->setDocument(QString());
+        m_editProxies.clear();
+        queueStateChanged();
+        setMessage(QStringLiteral("没有这个分组"));
+        return;
+    }
     QByteArray body;
-    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/profiles/document"), QByteArray(), &body, 30000)) {
+    if (!request(QStringLiteral("GET"), groupPath(id, QStringLiteral("document")), QByteArray(), &body, 30000)) {
         m_editLines->setDocument(QString());
         m_editProxies.clear();
         queueStateChanged();
@@ -631,10 +1192,27 @@ bool Controller::applyProxyEdit(int index, const QString &name, const QString &t
 
 void Controller::saveProfileText()
 {
+    if (m_editGroup.isEmpty()) {
+        setMessage(QStringLiteral("没有这个分组"));
+        return;
+    }
+    if (m_editGroup == m_activeGroup && m_tunRunning) {
+        setMessage(QStringLiteral("请先关闭代理"));
+        return;
+    }
     setMessage(QStringLiteral("正在校验…"));
     QJsonObject object;
     object.insert(QStringLiteral("text"), m_editLines->document());
-    postProfile(QStringLiteral("/v1/profiles/edit"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已校验，当前配置未替换"));
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), groupPath(m_editGroup, QStringLiteral("edit")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 60000)) {
+        return;
+    }
+    applyEditDocument(body);
+    QByteArray groups;
+    if (request(QStringLiteral("GET"), QStringLiteral("/v1/groups"), QByteArray(), &groups, 30000)) {
+        applyCatalog(groups, true);
+    }
+    setMessage(QStringLiteral("已保存"));
 }
 
 void Controller::applyEditDocument(const QByteArray &body)
@@ -849,7 +1427,10 @@ QString Controller::messageFor(const QString &code) const
         return QStringLiteral("订阅下载失败");
     }
     if (code == QLatin1String("no subscription")) {
-        return QStringLiteral("没有订阅地址");
+        return QStringLiteral("这不是订阅");
+    }
+    if (code == QLatin1String("group missing")) {
+        return QStringLiteral("没有这个分组");
     }
     if (code == QLatin1String("tun running")) {
         return QStringLiteral("请先关闭代理");

@@ -24,6 +24,10 @@ MainView {
     property var scanTransfer: null
     property bool scanHold: false
     property string scanHint: ""
+    property bool drawerOpen: false
+    property string pendingEditorGroup: ""
+    property int pendingEditorIndex: -1
+    property bool pendingEditorCard: false
 
     function acceptScan(transfer) {
         if (!transfer)
@@ -208,189 +212,25 @@ MainView {
     Component {
         id: homePage
 
-        Page {
-            id: homeRoot
-
-            function byteText(value) {
-                var n = Number(value)
-                if (n < 0) {
-                    n = 0
-                }
-                if (n < 1024) {
-                    return n + " B"
-                }
-                if (n < 1048576) {
-                    return (n / 1024).toFixed(1) + " KB"
-                }
-                if (n < 1073741824) {
-                    return (n / 1048576).toFixed(1) + " MB"
-                }
-                return (n / 1073741824).toFixed(2) + " GB"
+        HomePage {
+            onOpenDrawer: root.drawerOpen = true
+            onOpenAuth: PopupUtils.open(authDialog, root)
+            onEditNode: {
+                root.pendingEditorGroup = Controller.viewedGroup
+                root.pendingEditorIndex = index
+                root.pendingEditorCard = true
+                stack.push(editorPage)
             }
-
-            function trafficMax() {
-                var max = 1
-                var rows = Controller.trafficSamples
-                for (var i = 0; i < rows.length; i++) {
-                    var n = Number(rows[i].up) + Number(rows[i].down)
-                    if (n > max) {
-                        max = n
-                    }
-                }
-                return max
+            onScanAlbum: {
+                root.scanHint = ""
+                stack.push(picturePickerPage)
             }
-
-            onVisibleChanged: {
-                if (visible) {
-                    Controller.refreshTraffic()
-                }
+            onScanCamera: {
+                root.scanHint = ""
+                root.scanHold = true
+                picturePeers.want = "camera.ubports"
+                picturePeers.findPeers()
             }
-
-            header: PageHeader {
-                id: header
-                title: "Rayut"
-
-                trailingActionBar.actions: [
-                    Action {
-                        iconName: "note"
-                        text: "节点"
-                        onTriggered: stack.push(nodePage)
-                    },
-                    Action {
-                        iconName: "note"
-                        text: "订阅"
-                        onTriggered: stack.push(profilePage)
-                    },
-                    Action {
-                        iconName: "info"
-                        text: "日志"
-                        onTriggered: stack.push(sessionPage)
-                    }
-                ]
-            }
-
-        ColumnLayout {
-            spacing: units.gu(2)
-            anchors {
-                margins: units.gu(2)
-                top: header.bottom
-                left: parent.left
-                right: parent.right
-                bottom: parent.bottom
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: Controller.summary
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                visible: Controller.profileText !== ""
-                text: Controller.profileText
-            }
-
-            Button {
-                Layout.fillWidth: true
-                text: "总开关"
-                onClicked: {
-                    if (!Controller.helperRunning) {
-                        PopupUtils.open(authDialog, root)
-                    } else {
-                        Controller.toggleProxy()
-                    }
-                }
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: "本次会话  上传 " + homeRoot.byteText(Controller.sessionUpload) + "  下载 " + homeRoot.byteText(Controller.sessionDownload)
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                text: "累计  上传 " + homeRoot.byteText(Controller.totalUpload) + "  下载 " + homeRoot.byteText(Controller.totalDownload)
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                color: theme.palette.normal.backgroundText
-                text: "速率  上传 " + homeRoot.byteText(Controller.uploadRate) + "/s  下载 " + homeRoot.byteText(Controller.downloadRate) + "/s"
-            }
-
-            Item {
-                id: trafficChart
-                Layout.fillWidth: true
-                Layout.preferredHeight: units.gu(6)
-                visible: Controller.trafficSamples.length > 0
-
-                Row {
-                    anchors.fill: parent
-                    spacing: 1
-
-                    Repeater {
-                        model: Controller.trafficSamples
-
-                        Item {
-                            width: Math.max(1, (trafficChart.width - Math.max(0, Controller.trafficSamples.length - 1)) / Math.max(1, Controller.trafficSamples.length))
-                            height: trafficChart.height
-
-                            Rectangle {
-                                width: parent.width
-                                height: parent.height * Number(modelData.down) / homeRoot.trafficMax()
-                                anchors.bottom: parent.bottom
-                                color: theme.palette.normal.positive
-                            }
-
-                            Rectangle {
-                                width: parent.width
-                                height: parent.height * Number(modelData.up) / homeRoot.trafficMax()
-                                anchors.bottom: parent.bottom
-                                anchors.bottomMargin: parent.height * Number(modelData.down) / homeRoot.trafficMax()
-                                color: theme.palette.normal.activity
-                            }
-                        }
-                    }
-                }
-            }
-
-            Label {
-                Layout.fillWidth: true
-                visible: Controller.trafficSamples.length > 0
-                color: theme.palette.normal.backgroundText
-                text: "绿为下载，活动色为上传"
-            }
-
-            Timer {
-                interval: 1000
-                running: stack.currentPage === homeRoot
-                repeat: true
-                onTriggered: Controller.refreshTraffic()
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                color: theme.palette.normal.backgroundText
-                text: Controller.versionText
-            }
-
-            Label {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                color: theme.palette.normal.backgroundText
-                text: Controller.message
-            }
-
-            Item {
-                Layout.fillHeight: true
-            }
-        }
         }
     }
 
@@ -641,7 +481,7 @@ MainView {
         Page {
             header: PageHeader {
                 id: profileHeader
-                title: "订阅"
+                title: "规则模板"
             }
 
             Timer {
@@ -672,13 +512,13 @@ MainView {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: Controller.helperRunning ? Controller.profileText : "请先在首页连接"
+                        text: Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning ? "请先关闭代理" : "规则作用在正在查看的组上。"
                     }
 
                     Button {
                         Layout.fillWidth: true
                         text: "全局代理"
-                        enabled: Controller.helperRunning
+                        enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "global" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
                             templateAction.templateId = "global"
@@ -689,7 +529,7 @@ MainView {
                     Button {
                         Layout.fillWidth: true
                         text: "绕过局域网"
-                        enabled: Controller.helperRunning
+                        enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "lan" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
                             templateAction.templateId = "lan"
@@ -700,92 +540,12 @@ MainView {
                     Button {
                         Layout.fillWidth: true
                         text: "绕过局域网和中国大陆"
-                        enabled: Controller.helperRunning
+                        enabled: Controller.helperRunning && !(Controller.viewedGroup === Controller.activeGroup && Controller.tunRunning)
                         color: Controller.ruleTemplate === "lan-china" ? theme.palette.normal.positive : theme.palette.normal.base
                         onClicked: {
                             templateAction.templateId = "lan-china"
                             templateAction.start()
                         }
-                    }
-
-                    TextField {
-                        id: urlField
-                        Layout.fillWidth: true
-                        placeholderText: "https 订阅链接"
-                        enabled: Controller.helperRunning
-                        inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "导入链接"
-                        enabled: Controller.helperRunning
-                        onClicked: Controller.importURL(urlField.text)
-                    }
-
-                    TextArea {
-                        id: yamlField
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: units.gu(18)
-                        placeholderText: "本地 YAML 或一条分享链接"
-                        enabled: Controller.helperRunning
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "导入 YAML"
-                        enabled: Controller.helperRunning
-                        onClicked: Controller.importContent(yamlField.text)
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "相册"
-                        enabled: Controller.helperRunning
-                        onClicked: {
-                            root.scanHint = ""
-                            stack.push(picturePickerPage)
-                        }
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "相机"
-                        enabled: Controller.helperRunning
-                        onClicked: {
-                            root.scanHint = ""
-                            root.scanHold = true
-                            picturePeers.want = "camera.ubports"
-                            picturePeers.findPeers()
-                        }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        visible: root.scanHint !== ""
-                        text: root.scanHint
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "编辑当前配置"
-                        enabled: Controller.helperRunning && !Controller.versionMismatch
-                        onClicked: stack.push(editorPage)
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "刷新"
-                        enabled: Controller.helperRunning
-                        onClicked: Controller.refreshProfile()
-                    }
-
-                    Button {
-                        Layout.fillWidth: true
-                        text: "激活"
-                        enabled: Controller.helperRunning && !Controller.tunRunning
-                        onClicked: Controller.activateProfile()
                     }
 
                     Label {
@@ -800,23 +560,60 @@ MainView {
     }
 
     Component {
+        id: groupsPage
+
+        GroupsPage {
+        }
+    }
+
+    Component {
         id: editorPage
 
         Page {
             id: editorRoot
             property string mode: "text"
+            property string groupId: ""
+            property int pendingIndex: -1
+            property bool card: false
             property int formIndex: -1
 
             header: PageHeader {
                 id: editHeader
-                title: editorRoot.mode === "text" ? "文本" : "节点"
+                title: editorRoot.mode === "text" ? "配置编辑" : "节点"
+            }
+
+            function openForm(row) {
+                editorRoot.formIndex = row.index
+                nameField.text = row.name
+                typeField.text = row.type
+                serverField.text = row.server
+                portField.text = row.port
+                networkField.text = row.network
+                tlsSwitch.checked = row.tls
+                udpSwitch.checked = row.udp
+                secretField.text = ""
+                secretField.placeholderText = row.hasSecret ? "已有密钥，留空则不修改" : "密钥，可留空"
+                editorRoot.mode = "form"
             }
 
             Timer {
                 id: loadEdit
                 interval: 1
                 onTriggered: {
-                    Controller.loadProfileDocument()
+                    var id = editorRoot.groupId !== "" ? editorRoot.groupId : root.pendingEditorGroup
+                    editorRoot.groupId = id
+                    editorRoot.card = root.pendingEditorCard
+                    editorRoot.pendingIndex = root.pendingEditorIndex
+                    Controller.loadGroupDocument(id)
+                    if (editorRoot.card && editorRoot.pendingIndex >= 0) {
+                        var rows = Controller.editProxies
+                        for (var i = 0; i < rows.length; i++) {
+                            if (rows[i].index === editorRoot.pendingIndex) {
+                                editorRoot.openForm(rows[i])
+                                return
+                            }
+                        }
+                    }
                     editorRoot.mode = "text"
                 }
             }
@@ -851,7 +648,10 @@ MainView {
                         port = 0
                     if (Controller.applyProxyEdit(editorRoot.formIndex, nameField.text, typeField.text, serverField.text, port, networkField.text, tlsSwitch.checked, udpSwitch.checked, secretField.text)) {
                         secretField.text = ""
-                        editorRoot.mode = "text"
+                        if (editorRoot.card)
+                            Controller.saveProfileText()
+                        else
+                            editorRoot.mode = "text"
                     }
                 }
             }
@@ -953,17 +753,10 @@ MainView {
                         onClicked: openNodes.start()
                     }
 
-                    Button {
-                        width: parent.width
-                        text: "激活"
-                        enabled: Controller.helperRunning && !Controller.tunRunning && !Controller.versionMismatch
-                        onClicked: activateEdit.start()
-                    }
-
                     Label {
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: "保存只校验，不替换正在使用的配置。激活前请先关闭代理。"
+                        text: "保存前会校验。正在使用的组要先关闭代理才能改。"
                     }
 
                     Label {
@@ -1106,7 +899,7 @@ MainView {
 
                     Button {
                         width: parent.width
-                        text: "写回文本"
+                        text: editorRoot.card ? "保存" : "写回文本"
                         onClicked: writeNode.start()
                     }
 
@@ -1166,6 +959,107 @@ MainView {
                     scanAction.hasImage = false
                     scanAction.shouldPop = true
                     scanAction.start()
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: drawerNav
+        interval: 1
+        property string page: ""
+        onTriggered: {
+            root.drawerOpen = false
+            if (page === "groups")
+                stack.push(groupsPage)
+            else if (page === "rules")
+                stack.push(profilePage)
+            else if (page === "session")
+                stack.push(sessionPage)
+            else if (page === "editor") {
+                root.pendingEditorGroup = Controller.viewedGroup
+                root.pendingEditorIndex = -1
+                root.pendingEditorCard = false
+                stack.push(editorPage)
+            }
+        }
+    }
+
+    Item {
+        id: drawerLayer
+        anchors.fill: parent
+        visible: root.drawerOpen
+        z: 10
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.drawerOpen = false
+        }
+
+        Rectangle {
+            width: parent.width * 0.75
+            height: parent.height
+            color: theme.palette.normal.background
+
+            MouseArea {
+                anchors.fill: parent
+            }
+
+            Rectangle {
+                anchors.right: parent.right
+                width: units.dp(1)
+                height: parent.height
+                color: theme.palette.normal.foreground
+                z: 2
+            }
+
+            Column {
+                anchors {
+                    fill: parent
+                    margins: units.gu(2)
+                }
+                spacing: units.gu(1)
+
+                Label {
+                    width: parent.width
+                    text: "Rayut"
+                    font.pixelSize: FontUtils.sizeToPixels("large")
+                }
+
+                Button {
+                    width: parent.width
+                    text: "订阅分组"
+                    onClicked: {
+                        drawerNav.page = "groups"
+                        drawerNav.start()
+                    }
+                }
+
+                Button {
+                    width: parent.width
+                    text: "规则模板"
+                    onClicked: {
+                        drawerNav.page = "rules"
+                        drawerNav.start()
+                    }
+                }
+
+                Button {
+                    width: parent.width
+                    text: "配置编辑"
+                    onClicked: {
+                        drawerNav.page = "editor"
+                        drawerNav.start()
+                    }
+                }
+
+                Button {
+                    width: parent.width
+                    text: "日志和当前连接"
+                    onClicked: {
+                        drawerNav.page = "session"
+                        drawerNav.start()
+                    }
                 }
             }
         }
