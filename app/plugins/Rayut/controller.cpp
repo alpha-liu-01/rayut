@@ -2,7 +2,13 @@
 
 #include <algorithm>
 
+#include "qrscan.h"
+
 #include <QCoreApplication>
+#include <QImage>
+#include <QImageReader>
+
+#include <cstring>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
@@ -19,7 +25,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.11";
+const char kAppVersion[] = "0.1.12";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -268,6 +274,74 @@ void Controller::importContent(const QString &content)
     object.insert(QStringLiteral("name"), QStringLiteral("本地"));
     object.insert(QStringLiteral("content"), content);
     postProfile(QStringLiteral("/v1/profiles/import-content"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已校验，当前配置未替换"));
+}
+
+static int decodeGrayImage(const QImage &image, char *out, int outCap)
+{
+    if (image.isNull() || image.width() <= 0 || image.height() <= 0)
+        return -1;
+    const QImage gray = image.format() == QImage::Format_Grayscale8 ? image : image.convertToFormat(QImage::Format_Grayscale8);
+    const qint64 bytes = qint64(gray.width()) * qint64(gray.height());
+    if (bytes <= 0 || bytes > 8000000)
+        return -1;
+    QByteArray pixels(int(bytes), '\0');
+    for (int y = 0; y < gray.height(); ++y)
+        memcpy(pixels.data() + y * gray.width(), gray.constScanLine(y), (size_t)gray.width());
+    return rayut_decode_gray(reinterpret_cast<const unsigned char *>(pixels.constData()), gray.width(), gray.height(), out, outCap);
+}
+
+static QImage fitLongest(const QImage &image, int side)
+{
+    const int longest = qMax(image.width(), image.height());
+    if (side <= 0 || longest <= side)
+        return image;
+    return image.scaled(side, side, Qt::KeepAspectRatio, Qt::FastTransformation);
+}
+
+static QImage centerFraction(const QImage &image, double fraction)
+{
+    const int width = qBound(1, int(image.width() * fraction), image.width());
+    const int height = qBound(1, int(image.height() * fraction), image.height());
+    return image.copy((image.width() - width) / 2, (image.height() - height) / 2, width, height);
+}
+
+void Controller::importFromImage(const QUrl &url)
+{
+    const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    QImageReader reader(path);
+    reader.setAutoTransform(true);
+    const QImage image = reader.read();
+    if (image.isNull() || image.width() <= 0 || image.height() <= 0) {
+        setMessage(QStringLiteral("无法识别的图片"));
+        return;
+    }
+    const QImage gray = image.convertToFormat(QImage::Format_Grayscale8);
+    QByteArray text(8896, '\0');
+    int length = -1;
+    if (qMax(gray.width(), gray.height()) <= 2000)
+        length = decodeGrayImage(gray, text.data(), text.size());
+    const int sides[] = {1600, 1000, 640};
+    for (int side : sides) {
+        if (length > 0)
+            break;
+        length = decodeGrayImage(fitLongest(gray, side), text.data(), text.size());
+    }
+    const double crops[] = {0.7, 0.5, 0.3};
+    for (double fraction : crops) {
+        if (length > 0)
+            break;
+        length = decodeGrayImage(fitLongest(centerFraction(gray, fraction), 1400), text.data(), text.size());
+    }
+    if (length <= 0) {
+        setMessage(QStringLiteral("无法识别的图片"));
+        return;
+    }
+    const QString value = QString::fromUtf8(text.constData(), length).trimmed();
+    if (rayut_route_text(value.toUtf8().constData()) == 1) {
+        importURL(value);
+        return;
+    }
+    importContent(value);
 }
 
 void Controller::importURL(const QString &url)

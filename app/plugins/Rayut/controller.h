@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QUrl>
 #include <QVariant>
 
 class QNetworkAccessManager;
@@ -48,6 +49,7 @@ public:
     Q_INVOKABLE void selectProxy(const QString &group, const QString &name);
     Q_INVOKABLE void testDelay(const QString &name);
     Q_INVOKABLE void refreshSession();
+    Q_INVOKABLE void importFromImage(const QUrl &url);
 
 signals:
     void stateChanged();

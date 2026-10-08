@@ -18,3 +18,13 @@ Files translated, parsing only:
 The translation is daemon/internal/profile/sharelink.go. Android interface code was not copied.
 
 That revision defines the tuic:// scheme and comments out the TUIC parser. The TUIC query mapping in sharelink.go uses the same query style as FmtBase and the field names of mihomo v1.19.32 TuicOption. mihomo is a separate program shipped as a binary; its license is recorded with that binary's upstream, MetaCubeX/mihomo.
+
+Rayut also includes the quirc QR decoder.
+
+Project: quirc
+Source: https://github.com/dlbeer/quirc
+Revision: 927d680
+License: ISC
+Copyright: (C) 2010-2012 Daniel Beer <dlbeer@gmail.com>
+
+Files: app/third_party/quirc/ (quirc.c, decode.c, identify.c, version_db.c, quirc.h, quirc_internal.h). The upstream LICENSE file is copied beside them. Rayut calls the library to read a grayscale image and does not print the payload.

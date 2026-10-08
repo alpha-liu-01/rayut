@@ -2,6 +2,7 @@ import QtQuick 2.7
 import Lomiri.Components 1.3
 import Lomiri.Components.Popups 1.3
 import Lomiri.Components.Extras.PamAuthentication 0.1
+import Lomiri.Content 1.3
 import QtQuick.Layouts 1.3
 import Rayut 1.0
 
@@ -20,13 +21,47 @@ MainView {
     }
 
     property var authDialogItem: null
+    property var scanTransfer: null
+    property bool scanHold: false
+    property string scanHint: ""
+
+    function acceptScan(transfer) {
+        if (!transfer)
+            return
+        root.scanTransfer = transfer
+        if (transfer.state === ContentTransfer.Aborted) {
+            scanAction.hasImage = false
+            scanAction.shouldPop = stack.depth > 1
+            scanAction.start()
+            return
+        }
+        if (transfer.state !== ContentTransfer.Charged)
+            return
+        root.scanHold = true
+        scanAction.shouldPop = stack.depth > 1
+        var count = transfer.items ? transfer.items.length : 0
+        if (count < 1) {
+            scanAction.hasImage = false
+            root.scanHint = "无法识别的图片"
+            scanAction.start()
+            return
+        }
+        scanAction.imageUrl = transfer.items[0].url
+        scanAction.hasImage = true
+        scanAction.start()
+    }
 
     Connections {
         target: Qt.application
         onStateChanged: {
-            if (Qt.application.state === Qt.ApplicationSuspended)
+            if (Qt.application.state === Qt.ApplicationSuspended && !root.scanHold && !root.scanTransfer)
                 Qt.quit()
         }
+    }
+
+    Connections {
+        target: ContentHub
+        onImportRequested: root.acceptScan(transfer)
     }
 
     Timer {
@@ -110,6 +145,57 @@ MainView {
 
             Component.onCompleted: passwordField.forceActiveFocus()
         }
+    }
+
+    ContentPeerModel {
+        id: picturePeers
+        contentType: ContentType.Pictures
+        handler: ContentHandler.Source
+        property string want: ""
+        onFindPeersCompleted: {
+            if (want === "")
+                return
+            var fragment = want
+            want = ""
+            for (var i = 0; i < peers.length; i++) {
+                if (peers[i].appId.indexOf(fragment) !== -1) {
+                    root.scanHold = true
+                    peers[i].selectionType = ContentTransfer.Single
+                    root.scanTransfer = peers[i].request()
+                    return
+                }
+            }
+            root.scanHold = false
+            root.scanHint = "没有相机"
+        }
+    }
+
+    Timer {
+        id: scanAction
+        interval: 1
+        property url imageUrl
+        property bool hasImage: false
+        property bool shouldPop: false
+        onTriggered: {
+            var transfer = root.scanTransfer
+            var url = imageUrl
+            var useImage = hasImage
+            hasImage = false
+            root.scanHold = false
+            if (useImage)
+                Controller.importFromImage(url)
+            if (transfer)
+                transfer.finalize()
+            root.scanTransfer = null
+            if (shouldPop && stack.depth > 1)
+                stack.pop()
+        }
+    }
+
+    Connections {
+        target: root.scanTransfer
+        ignoreUnknownSignals: true
+        onStateChanged: root.acceptScan(root.scanTransfer)
     }
 
     PageStack {
@@ -508,6 +594,35 @@ MainView {
 
                     Button {
                         Layout.fillWidth: true
+                        text: "相册"
+                        enabled: Controller.helperRunning
+                        onClicked: {
+                            root.scanHint = ""
+                            stack.push(picturePickerPage)
+                        }
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "相机"
+                        enabled: Controller.helperRunning
+                        onClicked: {
+                            root.scanHint = ""
+                            root.scanHold = true
+                            picturePeers.want = "camera.ubports"
+                            picturePeers.findPeers()
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        visible: root.scanHint !== ""
+                        text: root.scanHint
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
                         text: "刷新"
                         enabled: Controller.helperRunning
                         onClicked: Controller.refreshProfile()
@@ -526,6 +641,38 @@ MainView {
                         color: theme.palette.normal.backgroundText
                         text: Controller.message
                     }
+                }
+            }
+        }
+    }
+
+    Component {
+        id: picturePickerPage
+
+        Page {
+            header: PageHeader {
+                id: pickerHeader
+                title: "相册"
+            }
+
+            ContentPeerPicker {
+                anchors {
+                    top: pickerHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                contentType: ContentType.Pictures
+                handler: ContentHandler.Source
+                onPeerSelected: {
+                    root.scanHold = true
+                    peer.selectionType = ContentTransfer.Single
+                    root.scanTransfer = peer.request()
+                }
+                onCancelPressed: {
+                    scanAction.hasImage = false
+                    scanAction.shouldPop = true
+                    scanAction.start()
                 }
             }
         }
