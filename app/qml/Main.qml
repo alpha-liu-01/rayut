@@ -663,6 +663,13 @@ MainView {
 
                     Button {
                         Layout.fillWidth: true
+                        text: "编辑当前配置"
+                        enabled: Controller.helperRunning && !Controller.versionMismatch
+                        onClicked: stack.push(editorPage)
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
                         text: "刷新"
                         enabled: Controller.helperRunning
                         onClicked: Controller.refreshProfile()
@@ -683,6 +690,346 @@ MainView {
                     }
                 }
             }
+        }
+    }
+
+    Component {
+        id: editorPage
+
+        Page {
+            id: editorRoot
+            property string mode: "text"
+            property int formIndex: -1
+
+            header: PageHeader {
+                id: editHeader
+                title: editorRoot.mode === "text" ? "文本" : "节点"
+            }
+
+            Timer {
+                id: loadEdit
+                interval: 1
+                onTriggered: {
+                    Controller.loadProfileDocument()
+                    editorRoot.mode = "text"
+                }
+            }
+
+            Timer {
+                id: saveEdit
+                interval: 1
+                onTriggered: Controller.saveProfileText()
+            }
+
+            Timer {
+                id: activateEdit
+                interval: 1
+                onTriggered: Controller.activateProfile()
+            }
+
+            Timer {
+                id: openNodes
+                interval: 1
+                onTriggered: {
+                    if (Controller.previewProfile())
+                        editorRoot.mode = "nodes"
+                }
+            }
+
+            Timer {
+                id: writeNode
+                interval: 1
+                onTriggered: {
+                    var port = parseInt(portField.text, 10)
+                    if (isNaN(port))
+                        port = 0
+                    if (Controller.applyProxyEdit(editorRoot.formIndex, nameField.text, typeField.text, serverField.text, port, networkField.text, tlsSwitch.checked, udpSwitch.checked, secretField.text)) {
+                        secretField.text = ""
+                        editorRoot.mode = "text"
+                    }
+                }
+            }
+
+            Item {
+                id: editBody
+                anchors {
+                    top: editHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+
+                Item {
+                    id: textPage
+                    visible: editorRoot.mode === "text"
+                    anchors.fill: parent
+
+                    ListView {
+                        id: lineView
+                        anchors {
+                            top: parent.top
+                            left: parent.left
+                            right: parent.right
+                            bottom: textButtons.top
+                            leftMargin: units.gu(2)
+                            rightMargin: units.gu(2)
+                            topMargin: units.gu(1)
+                        }
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        cacheBuffer: units.gu(8)
+                        model: Controller.editLines
+
+                        // Only the visible rows exist. The whole subscription is about
+                        // 14k lines, and one text control was repainting all of them.
+                        delegate: TextInput {
+                            width: lineView.width
+                            height: units.gu(2.5)
+                            clip: true
+                            color: theme.palette.normal.backgroundText
+                            font.family: "Ubuntu Mono"
+                            font.pixelSize: FontUtils.sizeToPixels("small")
+                            inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase | Qt.ImhSensitiveData
+                            property string source: model.line
+
+                            function claimFocus() {
+                                if (Controller.editFocusRow !== index)
+                                    return
+                                forceActiveFocus()
+                                cursorPosition = Math.min(Controller.editFocusColumn, text.length)
+                            }
+
+                            onSourceChanged: {
+                                if (text !== source)
+                                    text = source
+                            }
+                            onTextChanged: Controller.setEditLine(index, text)
+                            Keys.onReturnPressed: Controller.splitEditLine(index, cursorPosition)
+                            Keys.onPressed: {
+                                if (event.key === Qt.Key_Backspace && cursorPosition === 0 && index > 0) {
+                                    event.accepted = true
+                                    Controller.joinEditLine(index)
+                                }
+                            }
+                            Connections {
+                                target: Controller
+                                onEditFocusChanged: claimFocus()
+                            }
+                            Component.onCompleted: {
+                                if (text !== source)
+                                    text = source
+                                claimFocus()
+                            }
+                        }
+                    }
+
+                    Column {
+                        id: textButtons
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                            margins: units.gu(2)
+                        }
+                        spacing: units.gu(1)
+
+                    Button {
+                        width: parent.width
+                        text: "保存"
+                        enabled: Controller.helperRunning && !Controller.versionMismatch && lineView.count > 0
+                        onClicked: saveEdit.start()
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "节点"
+                        enabled: Controller.helperRunning && lineView.count > 0
+                        onClicked: openNodes.start()
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "激活"
+                        enabled: Controller.helperRunning && !Controller.tunRunning && !Controller.versionMismatch
+                        onClicked: activateEdit.start()
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: "保存只校验，不替换正在使用的配置。激活前请先关闭代理。"
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                    }
+                }
+
+                Flickable {
+                    id: editFlick
+                    visible: editorRoot.mode !== "text"
+                    anchors.fill: parent
+                    contentHeight: (editorRoot.mode === "form" ? formColumn.height : nodeColumn.height) + units.gu(4)
+                    clip: true
+
+                Column {
+                    id: nodeColumn
+                    visible: editorRoot.mode === "nodes"
+                    width: editFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(1)
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        visible: Controller.editProxies.length === 0
+                        text: "这份配置没有内联节点，请用文本编辑。"
+                    }
+
+                    Repeater {
+                        model: editorRoot.mode === "nodes" ? Controller.editProxies : []
+                        delegate: Button {
+                            width: nodeColumn.width
+                            text: modelData.name + "  " + modelData.type + "  " + modelData.port
+                            onClicked: {
+                                editorRoot.formIndex = modelData.index
+                                nameField.text = modelData.name
+                                typeField.text = modelData.type
+                                serverField.text = modelData.server
+                                portField.text = modelData.port
+                                networkField.text = modelData.network
+                                tlsSwitch.checked = modelData.tls
+                                udpSwitch.checked = modelData.udp
+                                secretField.text = ""
+                                secretField.placeholderText = modelData.hasSecret ? "已有密钥，留空则不修改" : "密钥，可留空"
+                                editorRoot.mode = "form"
+                            }
+                        }
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "返回文本"
+                        onClicked: editorRoot.mode = "text"
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                }
+
+                Column {
+                    id: formColumn
+                    visible: editorRoot.mode === "form"
+                    width: editFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(1)
+
+                    TextField {
+                        id: nameField
+                        width: parent.width
+                        placeholderText: "节点名"
+                        inputMethodHints: Qt.ImhNoPredictiveText
+                    }
+
+                    TextField {
+                        id: typeField
+                        width: parent.width
+                        placeholderText: "类型"
+                        inputMethodHints: Qt.ImhNoPredictiveText
+                    }
+
+                    TextField {
+                        id: serverField
+                        width: parent.width
+                        placeholderText: "服务器"
+                        inputMethodHints: Qt.ImhNoPredictiveText
+                    }
+
+                    TextField {
+                        id: portField
+                        width: parent.width
+                        placeholderText: "端口"
+                        inputMethodHints: Qt.ImhDigitsOnly
+                    }
+
+                    TextField {
+                        id: networkField
+                        width: parent.width
+                        placeholderText: "网络，例如 tcp 或 ws"
+                        inputMethodHints: Qt.ImhNoPredictiveText
+                    }
+
+                    Row {
+                        width: parent.width
+                        spacing: units.gu(2)
+
+                        Label {
+                            text: "TLS"
+                        }
+
+                        Switch {
+                            id: tlsSwitch
+                        }
+
+                        Label {
+                            text: "UDP"
+                        }
+
+                        Switch {
+                            id: udpSwitch
+                        }
+                    }
+
+                    TextField {
+                        id: secretField
+                        width: parent.width
+                        echoMode: TextInput.Password
+                        placeholderText: "密钥，可留空"
+                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "写回文本"
+                        onClicked: writeNode.start()
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "返回节点"
+                        onClicked: {
+                            secretField.text = ""
+                            editorRoot.mode = "nodes"
+                        }
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: "留空密钥会保留原来的密钥。这里不显示原密钥。"
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                }
+                }
+            }
+
+            Component.onCompleted: loadEdit.start()
         }
     }
 

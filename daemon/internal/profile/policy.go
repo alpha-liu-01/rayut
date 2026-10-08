@@ -98,6 +98,36 @@ func prepare(content string) (document, error) {
 	return document{}, errCode("invalid yaml")
 }
 
+// prepareDocument accepts only a Clash document. Share-link text and the
+// file-provider wrapper are import paths; using them here would let a broken
+// profile pass mihomo -t whenever the text still contains "://".
+func prepareDocument(content string) (document, error) {
+	raw := []byte(strings.TrimSpace(content))
+	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
+	if len(raw) == 0 {
+		return document{}, errCode("empty")
+	}
+	if len(raw) > MaxProfileBytes {
+		return document{}, errCode("too large")
+	}
+	if strings.Contains(strings.ToLower(string(raw)), "file://") {
+		return document{}, errCode("file scheme")
+	}
+	doc, ok := configDocument(raw)
+	if !ok {
+		return document{}, errCode("invalid yaml")
+	}
+	if err := inspect(doc); err != nil {
+		return document{}, err
+	}
+	applyBase(doc)
+	out, err := yaml.Marshal(doc)
+	if err != nil {
+		return document{}, errCode("invalid yaml")
+	}
+	return document{YAML: out}, nil
+}
+
 func oneShareLine(raw []byte) (string, bool) {
 	text := strings.TrimSpace(string(raw))
 	if text == "" || strings.Contains(text, "\n") || !strings.Contains(text, "://") {

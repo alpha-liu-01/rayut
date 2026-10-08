@@ -97,6 +97,60 @@ func (s *Server) applyRuleTemplate(w http.ResponseWriter, r *http.Request) {
 	writeProfile(w, view, err)
 }
 
+func (s *Server) profileDocument(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	doc, err := s.profileStore().CurrentDocument()
+	writeDocument(w, doc, err)
+}
+
+func (s *Server) previewProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Text  string              `json:"text"`
+		Edits []profile.ProxyEdit `json:"edits"`
+	}
+	if !decodeProfile(w, r, &body) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	doc, err := s.profileStore().PreviewDocument(body.Text, body.Edits)
+	writeDocument(w, doc, err)
+}
+
+func (s *Server) editProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Text string `json:"text"`
+	}
+	if !decodeProfile(w, r, &body) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	view, err := s.profileStore().EditCurrent(body.Text)
+	writeProfile(w, view, err)
+}
+
+func writeDocument(w http.ResponseWriter, doc profile.Document, err error) {
+	if err != nil {
+		http.Error(w, profile.Code(err), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, doc)
+}
+
 func (s *Server) refreshProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method", http.StatusMethodNotAllowed)

@@ -1,13 +1,40 @@
 #ifndef RAYUT_CONTROLLER_H
 #define RAYUT_CONTROLLER_H
 
+#include <QAbstractListModel>
+#include <QHash>
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QVariant>
 
 class QNetworkAccessManager;
+
+// One row per line so the editor only builds the lines on screen.
+// A single text control was laying out all 14k lines and the page stayed at a few frames per second.
+class EditLineModel : public QAbstractListModel {
+    Q_OBJECT
+
+public:
+    enum Roles { LineRole = Qt::UserRole + 1 };
+
+    explicit EditLineModel(QObject *parent = nullptr);
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+    void setDocument(const QString &text);
+    QString document() const;
+    void setLine(int row, const QString &text);
+    void splitLine(int row, int cursor, int *focusRow, int *focusColumn);
+    void joinLine(int row, int *focusRow, int *focusColumn);
+
+private:
+    QStringList m_lines;
+};
 
 class Controller : public QObject {
     Q_OBJECT
@@ -22,6 +49,10 @@ class Controller : public QObject {
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
+    Q_PROPERTY(EditLineModel *editLines READ editLines CONSTANT)
+    Q_PROPERTY(int editFocusRow READ editFocusRow NOTIFY editFocusChanged)
+    Q_PROPERTY(int editFocusColumn READ editFocusColumn NOTIFY editFocusChanged)
+    Q_PROPERTY(QVariantList editProxies READ editProxies NOTIFY stateChanged)
 
 public:
     explicit Controller(QObject *parent = nullptr);
@@ -37,6 +68,10 @@ public:
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
     QVariantList sessionConnections() const;
+    EditLineModel *editLines() const;
+    int editFocusRow() const;
+    int editFocusColumn() const;
+    QVariantList editProxies() const;
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void startHelper(QString password);
@@ -53,9 +88,17 @@ public:
     Q_INVOKABLE void testDelay(const QString &name);
     Q_INVOKABLE void refreshSession();
     Q_INVOKABLE void importFromImage(const QUrl &url);
+    Q_INVOKABLE void loadProfileDocument();
+    Q_INVOKABLE bool previewProfile();
+    Q_INVOKABLE bool applyProxyEdit(int index, const QString &name, const QString &type, const QString &server, int port, const QString &network, bool tls, bool udp, const QString &secret);
+    Q_INVOKABLE void saveProfileText();
+    Q_INVOKABLE void setEditLine(int row, const QString &text);
+    Q_INVOKABLE void splitEditLine(int row, int cursor);
+    Q_INVOKABLE void joinEditLine(int row);
 
 signals:
     void stateChanged();
+    void editFocusChanged();
 
 private:
     bool readToken();
@@ -67,6 +110,7 @@ private:
     void applyGroups(const QByteArray &body);
     void applyLogs(const QByteArray &body);
     void applyConnections(const QByteArray &body);
+    void applyEditDocument(const QByteArray &body);
     void postProfile(const QString &path, const QByteArray &payload, const QString &success);
     QString messageFor(const QString &code) const;
 
@@ -86,6 +130,10 @@ private:
     QVariantList m_proxyGroups;
     QVariantList m_sessionLogs;
     QVariantList m_sessionConnections;
+    EditLineModel *m_editLines;
+    int m_editFocusRow;
+    int m_editFocusColumn;
+    QVariantList m_editProxies;
 };
 
 #endif

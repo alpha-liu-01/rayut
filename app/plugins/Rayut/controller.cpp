@@ -25,7 +25,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.13";
+const char kAppVersion[] = "0.1.15";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -54,6 +54,96 @@ QString ruleTemplateLabel(const QString &id)
 }
 }
 
+EditLineModel::EditLineModel(QObject *parent)
+    : QAbstractListModel(parent)
+{
+}
+
+int EditLineModel::rowCount(const QModelIndex &parent) const
+{
+    if (parent.isValid()) {
+        return 0;
+    }
+    return m_lines.size();
+}
+
+QVariant EditLineModel::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_lines.size()) {
+        return QVariant();
+    }
+    if (role == LineRole || role == Qt::DisplayRole) {
+        return m_lines.at(index.row());
+    }
+    return QVariant();
+}
+
+QHash<int, QByteArray> EditLineModel::roleNames() const
+{
+    return {{LineRole, "line"}};
+}
+
+void EditLineModel::setDocument(const QString &text)
+{
+    beginResetModel();
+    m_lines = text.isEmpty() ? QStringList() : text.split(QLatin1Char('\n'), QString::KeepEmptyParts);
+    endResetModel();
+}
+
+QString EditLineModel::document() const
+{
+    return m_lines.join(QLatin1Char('\n'));
+}
+
+void EditLineModel::setLine(int row, const QString &text)
+{
+    if (row < 0 || row >= m_lines.size() || m_lines.at(row) == text) {
+        return;
+    }
+    m_lines[row] = text;
+}
+
+void EditLineModel::splitLine(int row, int cursor, int *focusRow, int *focusColumn)
+{
+    if (row < 0 || row >= m_lines.size()) {
+        return;
+    }
+    const QString line = m_lines.at(row);
+    const int cut = qBound(0, cursor, line.size());
+    m_lines[row] = line.left(cut);
+    beginInsertRows(QModelIndex(), row + 1, row + 1);
+    m_lines.insert(row + 1, line.mid(cut));
+    endInsertRows();
+    const QModelIndex current = index(row, 0);
+    emit dataChanged(current, current, {LineRole});
+    if (focusRow) {
+        *focusRow = row + 1;
+    }
+    if (focusColumn) {
+        *focusColumn = 0;
+    }
+}
+
+void EditLineModel::joinLine(int row, int *focusRow, int *focusColumn)
+{
+    if (row <= 0 || row >= m_lines.size()) {
+        return;
+    }
+    const int column = m_lines.at(row - 1).size();
+    m_lines[row - 1] += m_lines.at(row);
+    beginRemoveRows(QModelIndex(), row, row);
+    m_lines.removeAt(row);
+    endRemoveRows();
+    const QModelIndex previous = index(row - 1, 0);
+    emit dataChanged(previous, previous, {LineRole});
+    if (focusRow) {
+        *focusRow = row - 1;
+    }
+    if (focusColumn) {
+        *focusColumn = column;
+    }
+}
+
 Controller::Controller(QObject *parent)
     : QObject(parent)
     , m_network(new QNetworkAccessManager(this))
@@ -64,6 +154,9 @@ Controller::Controller(QObject *parent)
     , m_configBroken(false)
     , m_versionMismatch(false)
     , m_stateQueued(false)
+    , m_editLines(new EditLineModel(this))
+    , m_editFocusRow(-1)
+    , m_editFocusColumn(0)
 {
 }
 
@@ -127,6 +220,51 @@ QVariantList Controller::sessionLogs() const
 QVariantList Controller::sessionConnections() const
 {
     return m_sessionConnections;
+}
+
+EditLineModel *Controller::editLines() const
+{
+    return m_editLines;
+}
+
+int Controller::editFocusRow() const
+{
+    return m_editFocusRow;
+}
+
+int Controller::editFocusColumn() const
+{
+    return m_editFocusColumn;
+}
+
+QVariantList Controller::editProxies() const
+{
+    return m_editProxies;
+}
+
+void Controller::setEditLine(int row, const QString &text)
+{
+    m_editLines->setLine(row, text);
+}
+
+void Controller::splitEditLine(int row, int cursor)
+{
+    int focusRow = -1;
+    int focusColumn = 0;
+    m_editLines->splitLine(row, cursor, &focusRow, &focusColumn);
+    m_editFocusRow = focusRow;
+    m_editFocusColumn = focusColumn;
+    emit editFocusChanged();
+}
+
+void Controller::joinEditLine(int row)
+{
+    int focusRow = -1;
+    int focusColumn = 0;
+    m_editLines->joinLine(row, &focusRow, &focusColumn);
+    m_editFocusRow = focusRow;
+    m_editFocusColumn = focusColumn;
+    emit editFocusChanged();
 }
 
 QString Controller::versionText() const
@@ -388,6 +526,91 @@ void Controller::applyRuleTemplate(const QString &id)
     postProfile(QStringLiteral("/v1/rule-templates"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已切换规则"));
 }
 
+void Controller::loadProfileDocument()
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/profiles/document"), QByteArray(), &body, 30000)) {
+        m_editLines->setDocument(QString());
+        m_editProxies.clear();
+        queueStateChanged();
+        setMessage(messageFor(QString::fromUtf8(body).trimmed()));
+        return;
+    }
+    applyEditDocument(body);
+    setMessage(QStringLiteral("已载入当前配置"));
+}
+
+bool Controller::previewProfile()
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("text"), m_editLines->document());
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/profiles/preview"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 30000)) {
+        return false;
+    }
+    applyEditDocument(body);
+    return true;
+}
+
+bool Controller::applyProxyEdit(int index, const QString &name, const QString &type, const QString &server, int port, const QString &network, bool tls, bool udp, const QString &secret)
+{
+    QJsonObject edit;
+    edit.insert(QStringLiteral("index"), index);
+    edit.insert(QStringLiteral("name"), name);
+    edit.insert(QStringLiteral("type"), type);
+    edit.insert(QStringLiteral("server"), server);
+    edit.insert(QStringLiteral("port"), port);
+    edit.insert(QStringLiteral("network"), network);
+    edit.insert(QStringLiteral("tls"), tls);
+    edit.insert(QStringLiteral("udp"), udp);
+    edit.insert(QStringLiteral("secret"), secret);
+    QJsonArray edits;
+    edits.append(edit);
+    QJsonObject object;
+    object.insert(QStringLiteral("text"), m_editLines->document());
+    object.insert(QStringLiteral("edits"), edits);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/profiles/preview"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 30000)) {
+        return false;
+    }
+    applyEditDocument(body);
+    setMessage(QStringLiteral("已写回文本，尚未保存"));
+    return true;
+}
+
+void Controller::saveProfileText()
+{
+    setMessage(QStringLiteral("正在校验…"));
+    QJsonObject object;
+    object.insert(QStringLiteral("text"), m_editLines->document());
+    postProfile(QStringLiteral("/v1/profiles/edit"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已校验，当前配置未替换"));
+}
+
+void Controller::applyEditDocument(const QByteArray &body)
+{
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    const QJsonArray proxies = object.value(QStringLiteral("proxies")).toArray();
+    QVariantList rows;
+    for (const QJsonValue &value : proxies) {
+        const QJsonObject proxy = value.toObject();
+        QVariantMap row;
+        row.insert(QStringLiteral("index"), proxy.value(QStringLiteral("index")).toInt());
+        row.insert(QStringLiteral("name"), proxy.value(QStringLiteral("name")).toString());
+        row.insert(QStringLiteral("type"), proxy.value(QStringLiteral("type")).toString());
+        row.insert(QStringLiteral("server"), proxy.value(QStringLiteral("server")).toString());
+        row.insert(QStringLiteral("port"), proxy.value(QStringLiteral("port")).toInt());
+        row.insert(QStringLiteral("network"), proxy.value(QStringLiteral("network")).toString());
+        row.insert(QStringLiteral("tls"), proxy.value(QStringLiteral("tls")).toBool());
+        row.insert(QStringLiteral("udp"), proxy.value(QStringLiteral("udp")).toBool());
+        row.insert(QStringLiteral("hasSecret"), proxy.value(QStringLiteral("hasSecret")).toBool());
+        rows.append(row);
+    }
+    m_editLines->setDocument(object.value(QStringLiteral("text")).toString());
+    m_editFocusRow = -1;
+    m_editProxies = rows;
+    queueStateChanged();
+}
+
 void Controller::refreshGroups()
 {
     QByteArray body;
@@ -561,6 +784,9 @@ QString Controller::messageFor(const QString &code) const
     }
     if (code == QLatin1String("unknown template")) {
         return QStringLiteral("没有这套规则");
+    }
+    if (code == QLatin1String("bad field")) {
+        return QStringLiteral("字段无效");
     }
     if (code == QLatin1String("core not running")) {
         return QStringLiteral("核心未运行");

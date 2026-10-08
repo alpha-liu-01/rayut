@@ -39,15 +39,16 @@ type Item struct {
 }
 
 type stateFile struct {
-	CurrentName    string `json:"currentName"`
-	CurrentKind    string `json:"currentKind"`
-	CurrentHost    string `json:"currentHost"`
-	CandidateName  string `json:"candidateName"`
-	CandidateKind  string `json:"candidateKind"`
-	CandidateHost  string `json:"candidateHost"`
-	CandidateState string `json:"candidateState"`
-	Error          string `json:"error"`
-	RuleTemplate   string `json:"ruleTemplate"`
+	CurrentName      string `json:"currentName"`
+	CurrentKind      string `json:"currentKind"`
+	CurrentHost      string `json:"currentHost"`
+	CandidateName    string `json:"candidateName"`
+	CandidateKind    string `json:"candidateKind"`
+	CandidateHost    string `json:"candidateHost"`
+	CandidateState   string `json:"candidateState"`
+	Error            string `json:"error"`
+	RuleTemplate     string `json:"ruleTemplate"`
+	PreserveTemplate bool   `json:"preserveTemplate"`
 }
 
 func (s *Store) View() View {
@@ -165,7 +166,10 @@ func (s *Store) Activate() (View, error) {
 		state.CurrentKind = "local"
 	}
 	state.Error = ""
-	state.RuleTemplate = ""
+	if !state.PreserveTemplate {
+		state.RuleTemplate = ""
+	}
+	state.PreserveTemplate = false
 	if state.CurrentKind != "subscription" {
 		_ = os.Remove(s.urlPath())
 	}
@@ -175,8 +179,66 @@ func (s *Store) Activate() (View, error) {
 	return s.View(), nil
 }
 
+func (s *Store) CurrentDocument() (Document, error) {
+	body, err := os.ReadFile(s.activePath())
+	if err != nil || len(bytes.TrimSpace(body)) == 0 {
+		return Document{}, errCode("profile missing")
+	}
+	return ParseDocument(string(body))
+}
+
+func (s *Store) PreviewDocument(text string, edits []ProxyEdit) (Document, error) {
+	if len(edits) == 0 {
+		return ParseDocument(text)
+	}
+	return ApplyProxyEdits(text, edits)
+}
+
+func (s *Store) EditCurrent(content string) (View, error) {
+	if err := s.ensureLastGood(); err != nil {
+		return View{}, err
+	}
+	prepared, err := s.validateDocument(content)
+	if err != nil {
+		_ = s.writeError(codeOf(err))
+		return s.View(), err
+	}
+	state := s.readState()
+	meta := stateFile{
+		CandidateName:    state.CurrentName,
+		CandidateKind:    state.CurrentKind,
+		CandidateHost:    state.CurrentHost,
+		CandidateState:   "validated",
+		PreserveTemplate: true,
+	}
+	if strings.TrimSpace(meta.CandidateName) == "" {
+		meta.CandidateName = "当前"
+	}
+	if strings.TrimSpace(meta.CandidateKind) == "" {
+		meta.CandidateKind = "local"
+	}
+	if err := s.commitCandidate(prepared, meta); err != nil {
+		return View{}, err
+	}
+	return s.View(), nil
+}
+
 func (s *Store) validate(content string) ([]byte, error) {
-	prepared, err := prepare(content)
+	return s.validateContent(content, false, false)
+}
+
+func (s *Store) validateDocument(content string) ([]byte, error) {
+	return s.validateContent(content, true, true)
+}
+
+func (s *Store) validateContent(content string, keepPayload, documentOnly bool) ([]byte, error) {
+	var prepared document
+	var err error
+	if documentOnly {
+		prepared, err = prepareDocument(content)
+	} else {
+		prepared, err = prepare(content)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +248,12 @@ func (s *Store) validate(content string) ([]byte, error) {
 		}
 		if err := s.atomic(s.payloadPath(), prepared.Payload); err != nil {
 			return nil, err
+		}
+	} else if keepPayload {
+		if body, err := os.ReadFile(s.payloadPath()); err == nil && len(body) > 0 {
+			if err := s.atomic(filepath.Join(s.checkDir(), "subscription.payload"), body); err != nil {
+				return nil, err
+			}
 		}
 	}
 	temp, err := os.CreateTemp(s.Dir, "check-*.yaml")
@@ -210,7 +278,7 @@ func (s *Store) validate(content string) ([]byte, error) {
 		}
 		return nil, errCode("invalid config")
 	}
-	if len(prepared.Payload) == 0 {
+	if !keepPayload && len(prepared.Payload) == 0 {
 		_ = os.Remove(s.payloadPath())
 	}
 	return prepared.YAML, nil
@@ -235,6 +303,7 @@ func (s *Store) commitCandidate(prepared []byte, meta stateFile) error {
 	previous.CandidateKind = meta.CandidateKind
 	previous.CandidateHost = meta.CandidateHost
 	previous.CandidateState = meta.CandidateState
+	previous.PreserveTemplate = meta.PreserveTemplate
 	previous.Error = ""
 	return s.writeState(previous)
 }
@@ -348,6 +417,7 @@ func forbiddenHost(host string) bool {
 func (s *Store) writeError(code string) error {
 	state := s.readState()
 	state.Error = code
+	state.PreserveTemplate = false
 	state.CandidateName = ""
 	state.CandidateKind = ""
 	state.CandidateHost = ""

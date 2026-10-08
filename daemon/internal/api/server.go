@@ -21,7 +21,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.13"
+	HelperVersion = "0.1.15"
 	APIVersion    = "1"
 )
 
@@ -59,6 +59,9 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/profiles/import-url", s.auth(s.importURL))
 	mux.HandleFunc("/v1/profiles/activate", s.auth(s.activateProfile))
 	mux.HandleFunc("/v1/profiles/refresh", s.auth(s.refreshProfile))
+	mux.HandleFunc("/v1/profiles/document", s.auth(s.profileDocument))
+	mux.HandleFunc("/v1/profiles/preview", s.auth(s.previewProfile))
+	mux.HandleFunc("/v1/profiles/edit", s.auth(s.editProfile))
 	mux.HandleFunc("/v1/rule-templates", s.auth(s.applyRuleTemplate))
 	mux.HandleFunc("/v1/proxy-groups", s.auth(s.proxyGroups))
 	mux.HandleFunc("/v1/proxy-groups/", s.auth(s.proxyGroupSelection))
