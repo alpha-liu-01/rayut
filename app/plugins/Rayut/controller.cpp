@@ -32,7 +32,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.28";
+const char kAppVersion[] = "0.1.29";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -942,15 +942,17 @@ void Controller::selectNode(const QString &id, const QString &group, const QStri
 
 void Controller::testNode(const QString &id, const QString &name)
 {
-    setMessage(QStringLiteral("正在测试延迟"));
     QJsonObject object;
     object.insert(QStringLiteral("name"), name);
     QByteArray body;
-    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("delay")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 20000)) {
+    if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("delay")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 15000)) {
         return;
     }
-    loadNodes(id);
-    setMessage(QString());
+    const QJsonObject response = QJsonDocument::fromJson(body).object();
+    m_delayRunning = response.value(QStringLiteral("running")).toBool();
+    m_delayDone = response.value(QStringLiteral("done")).toInt();
+    m_delayTotal = response.value(QStringLiteral("total")).toInt();
+    queueStateChanged();
 }
 
 void Controller::testGroup(const QString &id)

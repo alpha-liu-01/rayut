@@ -11,6 +11,21 @@ import (
 	"github.com/alpha-liu-01/rayut/daemon/internal/profile"
 )
 
+// coreUp and measureDelay are replaced in tests so a delay start never
+// touches a real core or the network.
+var coreUp = func() bool {
+	_, ok := core.Alive()
+	return ok
+}
+
+var measureDelay = func(ctx context.Context, name string) (int, error) {
+	client, err := mihomoapi.Default()
+	if err != nil {
+		return 0, err
+	}
+	return client.Delay(ctx, name)
+}
+
 func (s *Server) groupsRoot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || r.URL.Path != "/v1/groups" {
 		http.Error(w, "method", http.StatusMethodNotAllowed)
@@ -290,6 +305,11 @@ func (s *Server) groupDelay(w http.ResponseWriter, r *http.Request, id string) {
 	if !decodeProfile(w, r, &body) {
 		return
 	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		http.Error(w, "invalid name", http.StatusBadRequest)
+		return
+	}
 	s.mu.Lock()
 	store := s.profileStore()
 	active := store.ActiveGroup() == id
@@ -298,28 +318,11 @@ func (s *Server) groupDelay(w http.ResponseWriter, r *http.Request, id string) {
 		http.Error(w, "core not running", http.StatusConflict)
 		return
 	}
-	if _, ok := core.Alive(); !ok {
+	if !coreUp() {
 		http.Error(w, "core not running", http.StatusConflict)
 		return
 	}
-	client, err := mihomoapi.Default()
-	if err != nil {
-		http.Error(w, "controller unavailable", http.StatusConflict)
-		return
-	}
-	delay, err := client.Delay(r.Context(), body.Name)
-	if err != nil {
-		http.Error(w, "delay failed", http.StatusConflict)
-		return
-	}
-	s.mu.Lock()
-	err = s.profileStore().SetDelay(id, body.Name, delay)
-	s.mu.Unlock()
-	if err != nil {
-		http.Error(w, profile.Code(err), http.StatusBadRequest)
-		return
-	}
-	writeJSON(w, map[string]int{"delay": delay})
+	s.beginDelays(w, id, []string{name})
 }
 
 func (s *Server) groupDelayAll(w http.ResponseWriter, id string) {
@@ -336,15 +339,8 @@ func (s *Server) groupDelayAll(w http.ResponseWriter, id string) {
 		http.Error(w, profile.Code(err), http.StatusBadRequest)
 		return
 	}
-	if _, ok := core.Alive(); !ok {
+	if !coreUp() {
 		http.Error(w, "core not running", http.StatusConflict)
-		return
-	}
-	s.delays.mu.Lock()
-	if s.delays.running {
-		done, total := s.delays.done, s.delays.total
-		s.delays.mu.Unlock()
-		writeJSON(w, map[string]any{"running": true, "done": done, "total": total})
 		return
 	}
 	names := make([]string, 0, len(nodes))
@@ -352,6 +348,17 @@ func (s *Server) groupDelayAll(w http.ResponseWriter, id string) {
 		if node.Name != "" {
 			names = append(names, node.Name)
 		}
+	}
+	s.beginDelays(w, id, names)
+}
+
+func (s *Server) beginDelays(w http.ResponseWriter, id string, names []string) {
+	s.delays.mu.Lock()
+	if s.delays.running {
+		done, total := s.delays.done, s.delays.total
+		s.delays.mu.Unlock()
+		writeJSON(w, map[string]any{"running": true, "done": done, "total": total})
+		return
 	}
 	s.delays.group = id
 	s.delays.running = true
@@ -369,13 +376,9 @@ func (s *Server) runDelays(id string, names []string) {
 		s.delays.done = s.delays.total
 		s.delays.mu.Unlock()
 	}()
-	client, err := mihomoapi.Default()
-	if err != nil {
-		return
-	}
 	for _, name := range names {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		delay, err := client.Delay(ctx, name)
+		delay, err := measureDelay(ctx, name)
 		cancel()
 		if err != nil {
 			delay = -1
