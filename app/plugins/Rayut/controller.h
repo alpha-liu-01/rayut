@@ -72,6 +72,8 @@ class Controller : public QObject {
     Q_PROPERTY(QString activeGroup READ activeGroup NOTIFY stateChanged)
     Q_PROPERTY(QString groupKind READ groupKind NOTIFY stateChanged)
     Q_PROPERTY(QString groupURL READ groupURL NOTIFY stateChanged)
+    Q_PROPERTY(QString shareImage READ shareImage NOTIFY shareChanged)
+    Q_PROPERTY(QString shareNote READ shareNote NOTIFY shareChanged)
     Q_PROPERTY(bool delayRunning READ delayRunning NOTIFY stateChanged)
     Q_PROPERTY(int delayDone READ delayDone NOTIFY stateChanged)
     Q_PROPERTY(int delayTotal READ delayTotal NOTIFY stateChanged)
@@ -117,6 +119,8 @@ public:
     QString activeGroup() const;
     QString groupKind() const;
     QString groupURL() const;
+    QString shareImage() const;
+    QString shareNote() const;
     bool delayRunning() const;
     int delayDone() const;
     int delayTotal() const;
@@ -152,7 +156,8 @@ public:
     Q_INVOKABLE void testGroup(const QString &id);
     Q_INVOKABLE void pollGroupDelay(const QString &id);
     Q_INVOKABLE void exportGroup(const QString &id);
-    Q_INVOKABLE void exportNode(const QString &id, const QString &name);
+    Q_INVOKABLE bool exportNode(const QString &id, const QString &name);
+    Q_INVOKABLE void clearShare();
     Q_INVOKABLE void saveGroup(const QString &id, const QString &name, const QString &url);
     Q_INVOKABLE void loadGroupDetail(const QString &id);
     Q_INVOKABLE void restartProxy();
@@ -177,6 +182,7 @@ public:
 signals:
     void stateChanged();
     void editFocusChanged();
+    void shareChanged();
 
 private:
     bool readToken();
@@ -199,6 +205,7 @@ private:
     bool postCatalog(const QString &path, const QByteArray &payload, const QString &success, bool reloadNodes);
     bool postNodes(const QString &path, const QByteArray &payload, const QString &success);
     void copyExport(const QByteArray &body);
+    void showShareNote(const QString &note);
     QString groupPath(const QString &id, const QString &action) const;
     QString clipboardText() const;
     void postProfile(const QString &path, const QByteArray &payload, const QString &success);
@@ -248,6 +255,8 @@ private:
     QString m_activeGroup;
     QString m_groupKind;
     QString m_groupURL;
+    QString m_shareImage;
+    QString m_shareNote;
     QString m_editGroup;
     bool m_delayRunning;
     int m_delayDone;

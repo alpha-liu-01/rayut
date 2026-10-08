@@ -2,14 +2,17 @@
 
 #include <algorithm>
 
+#include "qrdraw.h"
 #include "qrscan.h"
 
+#include <QBuffer>
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QImage>
 #include <QImageReader>
 
+#include <cstdlib>
 #include <cstring>
 #include <QDir>
 #include <QEventLoop>
@@ -1012,15 +1015,80 @@ void Controller::exportGroup(const QString &id)
     copyExport(body);
 }
 
-void Controller::exportNode(const QString &id, const QString &name)
+QString Controller::shareImage() const
+{
+    return m_shareImage;
+}
+
+QString Controller::shareNote() const
+{
+    return m_shareNote;
+}
+
+void Controller::showShareNote(const QString &note)
+{
+    m_shareImage.clear();
+    m_shareNote = note;
+    setMessage(QString());
+    emit shareChanged();
+}
+
+void Controller::clearShare()
+{
+    if (m_shareImage.isEmpty() && m_shareNote.isEmpty()) {
+        return;
+    }
+    m_shareImage.clear();
+    m_shareNote.clear();
+    emit shareChanged();
+}
+
+bool Controller::exportNode(const QString &id, const QString &name)
 {
     QJsonObject object;
     object.insert(QStringLiteral("name"), name);
     QByteArray body;
     if (!request(QStringLiteral("POST"), groupPath(id, QStringLiteral("export")), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 15000)) {
-        return;
+        if (QString::fromUtf8(body).trimmed() == QLatin1String("not found")) {
+            showShareNote(QStringLiteral("没有存下来的分享链接"));
+            return true;
+        }
+        clearShare();
+        return false;
     }
-    copyExport(body);
+    const QString text = QJsonDocument::fromJson(body).object().value(QStringLiteral("text")).toString().trimmed();
+    body.fill('\0');
+    if (text.isEmpty()) {
+        showShareNote(QStringLiteral("没有存下来的分享链接"));
+        return true;
+    }
+    unsigned char *pixels = nullptr;
+    const int side = rayut_encode_qr(text.toUtf8().constData(), &pixels, 8);
+    if (side < 1 || !pixels) {
+        free(pixels);
+        showShareNote(QStringLiteral("这条链接画不成码"));
+        return true;
+    }
+    const QImage view(pixels, side, side, side, QImage::Format_Grayscale8);
+    const QImage owned = view.copy();
+    free(pixels);
+    QByteArray png;
+    QBuffer buffer(&png);
+    if (!buffer.open(QIODevice::WriteOnly) || !owned.save(&buffer, "PNG")) {
+        showShareNote(QStringLiteral("这条链接画不成码"));
+        return true;
+    }
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (clipboard) {
+        clipboard->setText(text);
+        setMessage(QStringLiteral("已复制"));
+    } else {
+        setMessage(QString());
+    }
+    m_shareNote.clear();
+    m_shareImage = QStringLiteral("data:image/png;base64,") + QString::fromLatin1(png.toBase64());
+    emit shareChanged();
+    return true;
 }
 
 void Controller::saveGroup(const QString &id, const QString &name, const QString &url)

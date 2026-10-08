@@ -211,8 +211,10 @@ Page {
                 Controller.testNode(id, name)
             else if (kind === "delete")
                 Controller.deleteNode(id, index)
-            else if (kind === "share")
-                Controller.exportNode(id, name)
+            else if (kind === "share") {
+                if (Controller.exportNode(id, name))
+                    PopupUtils.open(shareDialog, homeRoot.header)
+            }
             else if (kind === "use")
                 Controller.useGroup(id)
             else if (kind === "clear")
@@ -948,6 +950,42 @@ Page {
                     PopupUtils.close(yamlBox)
                 }
             }
+        }
+    }
+
+    Component {
+        id: shareDialog
+
+        Dialog {
+            id: shareBox
+            title: Controller.shareImage === "" ? "导出不了" : "分享"
+
+            Image {
+                visible: Controller.shareImage !== ""
+                width: units.gu(28)
+                height: width
+                source: Controller.shareImage
+                fillMode: Image.PreserveAspectFit
+                smooth: false
+                cache: false
+            }
+
+            Label {
+                visible: Controller.shareImage === ""
+                width: parent ? parent.width : units.gu(28)
+                wrapMode: Text.Wrap
+                text: Controller.shareNote
+            }
+
+            Button {
+                text: "关闭"
+                onClicked: {
+                    Controller.clearShare()
+                    PopupUtils.close(shareBox)
+                }
+            }
+
+            Component.onDestruction: Controller.clearShare()
         }
     }
 

@@ -10,12 +10,17 @@ add_library(${PLUGIN} MODULE
     controller.cpp
     plugin.cpp
     qrscan.c
+    qrdraw.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/qrcodegen/qrcodegen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/quirc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/decode.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/identify.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc/version_db.c
 )
-target_include_directories(${PLUGIN} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc)
+target_include_directories(${PLUGIN} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/quirc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/qrcodegen
+)
 set_target_properties(${PLUGIN} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PLUGIN})
 target_link_libraries(${PLUGIN} Qt5::Gui Qt5::Qml Qt5::Quick Qt5::Network)
 
