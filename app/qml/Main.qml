@@ -209,6 +209,43 @@ MainView {
         id: homePage
 
         Page {
+            id: homeRoot
+
+            function byteText(value) {
+                var n = Number(value)
+                if (n < 0) {
+                    n = 0
+                }
+                if (n < 1024) {
+                    return n + " B"
+                }
+                if (n < 1048576) {
+                    return (n / 1024).toFixed(1) + " KB"
+                }
+                if (n < 1073741824) {
+                    return (n / 1048576).toFixed(1) + " MB"
+                }
+                return (n / 1073741824).toFixed(2) + " GB"
+            }
+
+            function trafficMax() {
+                var max = 1
+                var rows = Controller.trafficSamples
+                for (var i = 0; i < rows.length; i++) {
+                    var n = Number(rows[i].up) + Number(rows[i].down)
+                    if (n > max) {
+                        max = n
+                    }
+                }
+                return max
+            }
+
+            onVisibleChanged: {
+                if (visible) {
+                    Controller.refreshTraffic()
+                }
+            }
+
             header: PageHeader {
                 id: header
                 title: "Rayut"
@@ -265,6 +302,75 @@ MainView {
                         Controller.toggleProxy()
                     }
                 }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: "本次会话  上传 " + homeRoot.byteText(Controller.sessionUpload) + "  下载 " + homeRoot.byteText(Controller.sessionDownload)
+            }
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: "累计  上传 " + homeRoot.byteText(Controller.totalUpload) + "  下载 " + homeRoot.byteText(Controller.totalDownload)
+            }
+
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: theme.palette.normal.backgroundText
+                text: "速率  上传 " + homeRoot.byteText(Controller.uploadRate) + "/s  下载 " + homeRoot.byteText(Controller.downloadRate) + "/s"
+            }
+
+            Item {
+                id: trafficChart
+                Layout.fillWidth: true
+                Layout.preferredHeight: units.gu(6)
+                visible: Controller.trafficSamples.length > 0
+
+                Row {
+                    anchors.fill: parent
+                    spacing: 1
+
+                    Repeater {
+                        model: Controller.trafficSamples
+
+                        Item {
+                            width: Math.max(1, (trafficChart.width - Math.max(0, Controller.trafficSamples.length - 1)) / Math.max(1, Controller.trafficSamples.length))
+                            height: trafficChart.height
+
+                            Rectangle {
+                                width: parent.width
+                                height: parent.height * Number(modelData.down) / homeRoot.trafficMax()
+                                anchors.bottom: parent.bottom
+                                color: theme.palette.normal.positive
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: parent.height * Number(modelData.up) / homeRoot.trafficMax()
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: parent.height * Number(modelData.down) / homeRoot.trafficMax()
+                                color: theme.palette.normal.activity
+                            }
+                        }
+                    }
+                }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                visible: Controller.trafficSamples.length > 0
+                color: theme.palette.normal.backgroundText
+                text: "绿为下载，活动色为上传"
+            }
+
+            Timer {
+                interval: 1000
+                running: stack.currentPage === homeRoot
+                repeat: true
+                onTriggered: Controller.refreshTraffic()
             }
 
             Label {

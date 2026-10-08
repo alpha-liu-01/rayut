@@ -14,6 +14,7 @@ import (
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
+	"github.com/alpha-liu-01/rayut/daemon/internal/traffic"
 )
 
 const ListenAddr = "127.0.0.1:18771"
@@ -21,7 +22,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.15"
+	HelperVersion = "0.1.16"
 	APIVersion    = "1"
 )
 
@@ -31,6 +32,7 @@ type Server struct {
 	http    *http.Server
 	groups  groupAPI
 	session sessionAPI
+	traffic *traffic.Ledger
 }
 
 func New() (*Server, error) {
@@ -48,7 +50,7 @@ func New() (*Server, error) {
 	if err := publishClientToken(token); err != nil {
 		return nil, err
 	}
-	s := &Server{token: token}
+	s := &Server{token: token, traffic: traffic.New(traffic.Path())}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/health", s.auth(s.health))
 	mux.HandleFunc("/v1/status", s.auth(s.status))
@@ -68,6 +70,7 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/proxies/", s.auth(s.proxyDelay))
 	mux.HandleFunc("/v1/logs", s.auth(s.logs))
 	mux.HandleFunc("/v1/connections", s.auth(s.connections))
+	mux.HandleFunc("/v1/traffic", s.auth(s.trafficView))
 	s.http = &http.Server{
 		Addr:              ListenAddr,
 		Handler:           mux,
@@ -77,7 +80,11 @@ func New() (*Server, error) {
 }
 
 func (s *Server) Serve(ln net.Listener) error {
-	return s.http.Serve(ln)
+	stop := make(chan struct{})
+	go s.watchTraffic(stop)
+	err := s.http.Serve(ln)
+	close(stop)
+	return err
 }
 
 func (s *Server) Shutdown() error {
@@ -171,9 +178,11 @@ func (s *Server) StopTun() error {
 }
 
 func (s *Server) stopTun() error {
+	s.sampleTraffic()
 	if err := core.Stop(); err != nil {
 		return err
 	}
+	s.sampleTraffic()
 	return route.Recover()
 }
 

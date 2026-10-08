@@ -49,6 +49,13 @@ class Controller : public QObject {
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
+    Q_PROPERTY(qint64 sessionUpload READ sessionUpload NOTIFY stateChanged)
+    Q_PROPERTY(qint64 sessionDownload READ sessionDownload NOTIFY stateChanged)
+    Q_PROPERTY(qint64 uploadRate READ uploadRate NOTIFY stateChanged)
+    Q_PROPERTY(qint64 downloadRate READ downloadRate NOTIFY stateChanged)
+    Q_PROPERTY(qint64 totalUpload READ totalUpload NOTIFY stateChanged)
+    Q_PROPERTY(qint64 totalDownload READ totalDownload NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList trafficSamples READ trafficSamples NOTIFY stateChanged)
     Q_PROPERTY(EditLineModel *editLines READ editLines CONSTANT)
     Q_PROPERTY(int editFocusRow READ editFocusRow NOTIFY editFocusChanged)
     Q_PROPERTY(int editFocusColumn READ editFocusColumn NOTIFY editFocusChanged)
@@ -68,6 +75,13 @@ public:
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
     QVariantList sessionConnections() const;
+    qint64 sessionUpload() const;
+    qint64 sessionDownload() const;
+    qint64 uploadRate() const;
+    qint64 downloadRate() const;
+    qint64 totalUpload() const;
+    qint64 totalDownload() const;
+    QVariantList trafficSamples() const;
     EditLineModel *editLines() const;
     int editFocusRow() const;
     int editFocusColumn() const;
@@ -87,6 +101,7 @@ public:
     Q_INVOKABLE void selectProxy(const QString &group, const QString &name);
     Q_INVOKABLE void testDelay(const QString &name);
     Q_INVOKABLE void refreshSession();
+    Q_INVOKABLE void refreshTraffic();
     Q_INVOKABLE void importFromImage(const QUrl &url);
     Q_INVOKABLE void loadProfileDocument();
     Q_INVOKABLE bool previewProfile();
@@ -110,6 +125,7 @@ private:
     void applyGroups(const QByteArray &body);
     void applyLogs(const QByteArray &body);
     void applyConnections(const QByteArray &body);
+    void applyTraffic(const QByteArray &body);
     void applyEditDocument(const QByteArray &body);
     void postProfile(const QString &path, const QByteArray &payload, const QString &success);
     QString messageFor(const QString &code) const;
@@ -130,6 +146,13 @@ private:
     QVariantList m_proxyGroups;
     QVariantList m_sessionLogs;
     QVariantList m_sessionConnections;
+    qint64 m_sessionUpload;
+    qint64 m_sessionDownload;
+    qint64 m_uploadRate;
+    qint64 m_downloadRate;
+    qint64 m_totalUpload;
+    qint64 m_totalDownload;
+    QVariantList m_trafficSamples;
     EditLineModel *m_editLines;
     int m_editFocusRow;
     int m_editFocusColumn;

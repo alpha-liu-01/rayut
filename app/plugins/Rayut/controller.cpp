@@ -25,7 +25,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.15";
+const char kAppVersion[] = "0.1.16";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -222,6 +222,41 @@ QVariantList Controller::sessionConnections() const
     return m_sessionConnections;
 }
 
+qint64 Controller::sessionUpload() const
+{
+    return m_sessionUpload;
+}
+
+qint64 Controller::sessionDownload() const
+{
+    return m_sessionDownload;
+}
+
+qint64 Controller::uploadRate() const
+{
+    return m_uploadRate;
+}
+
+qint64 Controller::downloadRate() const
+{
+    return m_downloadRate;
+}
+
+qint64 Controller::totalUpload() const
+{
+    return m_totalUpload;
+}
+
+qint64 Controller::totalDownload() const
+{
+    return m_totalDownload;
+}
+
+QVariantList Controller::trafficSamples() const
+{
+    return m_trafficSamples;
+}
+
 EditLineModel *Controller::editLines() const
 {
     return m_editLines;
@@ -324,12 +359,18 @@ void Controller::refresh()
         m_profileText.clear();
         m_ruleTemplate.clear();
         m_versionText.clear();
+        m_sessionUpload = 0;
+        m_sessionDownload = 0;
+        m_uploadRate = 0;
+        m_downloadRate = 0;
+        m_trafficSamples.clear();
         if (changed) {
             queueStateChanged();
         }
         return;
     }
     applyStatus(body);
+    refreshTraffic();
     QByteArray profile;
     if (request(QStringLiteral("GET"), QStringLiteral("/v1/profiles"), QByteArray(), &profile, 30000)) {
         applyProfile(profile);
@@ -638,6 +679,24 @@ void Controller::selectProxy(const QString &group, const QString &name)
     setMessage(QStringLiteral("已选择"));
 }
 
+void Controller::refreshTraffic()
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/traffic"), QByteArray(), &body, 3000)) {
+        const bool changed = m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0 || !m_trafficSamples.isEmpty();
+        m_sessionUpload = 0;
+        m_sessionDownload = 0;
+        m_uploadRate = 0;
+        m_downloadRate = 0;
+        m_trafficSamples.clear();
+        if (changed) {
+            queueStateChanged();
+        }
+        return;
+    }
+    applyTraffic(body);
+}
+
 void Controller::refreshSession()
 {
     QByteArray logs;
@@ -878,6 +937,40 @@ void Controller::applyConnections(const QByteArray &body)
         list.append(item);
     }
     m_sessionConnections = list;
+    queueStateChanged();
+}
+
+void Controller::applyTraffic(const QByteArray &body)
+{
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    const qint64 sessionUpload = object.value(QStringLiteral("uploadTotal")).toVariant().toLongLong();
+    const qint64 sessionDownload = object.value(QStringLiteral("downloadTotal")).toVariant().toLongLong();
+    const qint64 uploadRate = object.value(QStringLiteral("up")).toVariant().toLongLong();
+    const qint64 downloadRate = object.value(QStringLiteral("down")).toVariant().toLongLong();
+    const qint64 totalUpload = object.value(QStringLiteral("cumulativeUpload")).toVariant().toLongLong();
+    const qint64 totalDownload = object.value(QStringLiteral("cumulativeDownload")).toVariant().toLongLong();
+    QVariantList samples;
+    const QJsonArray rows = object.value(QStringLiteral("samples")).toArray();
+    for (const QJsonValue &value : rows) {
+        const QJsonObject row = value.toObject();
+        QVariantMap item;
+        item.insert(QStringLiteral("up"), row.value(QStringLiteral("up")).toVariant().toLongLong());
+        item.insert(QStringLiteral("down"), row.value(QStringLiteral("down")).toVariant().toLongLong());
+        samples.append(item);
+    }
+    if (sessionUpload == m_sessionUpload && sessionDownload == m_sessionDownload
+        && uploadRate == m_uploadRate && downloadRate == m_downloadRate
+        && totalUpload == m_totalUpload && totalDownload == m_totalDownload
+        && samples == m_trafficSamples) {
+        return;
+    }
+    m_sessionUpload = sessionUpload;
+    m_sessionDownload = sessionDownload;
+    m_uploadRate = uploadRate;
+    m_downloadRate = downloadRate;
+    m_totalUpload = totalUpload;
+    m_totalDownload = totalDownload;
+    m_trafficSamples = samples;
     queueStateChanged();
 }
 

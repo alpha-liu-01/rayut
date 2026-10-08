@@ -180,3 +180,29 @@ func TestConnectionsKeepFieldsAndDropSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestSessionTrafficReadsTotalsAndOneSpeed(t *testing.T) {
+	const leaked = "super-secret-password"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/connections":
+			_, _ = w.Write([]byte(`{"downloadTotal":10,"uploadTotal":4,"connections":[{"metadata":{"host":"example.com","password":"` + leaked + `"}}]}`))
+		case "/traffic":
+			_, _ = w.Write([]byte("{\"up\":3,\"down\":9}\n"))
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+			<-r.Context().Done()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	got, err := New(srv.URL, "token").SessionTraffic(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.UploadTotal != 4 || got.DownloadTotal != 10 || got.Up != 3 || got.Down != 9 {
+		t.Fatalf("%+v", got)
+	}
+}

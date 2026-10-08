@@ -1,6 +1,7 @@
 package mihomoapi
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -230,6 +231,71 @@ func mapConnections(body []byte) ([]Connection, error) {
 
 func redactText(value string) string {
 	return redact.Text(value)
+}
+
+// Traffic is the MetaCubeXD session snapshot: uploadTotal and downloadTotal
+// since this core started, plus the latest up/down rates.
+type Traffic struct {
+	UploadTotal   int64
+	DownloadTotal int64
+	Up            int64
+	Down          int64
+}
+
+func (c *Client) SessionTraffic(ctx context.Context) (Traffic, error) {
+	code, body, err := c.get(ctx, "/connections", "")
+	if err != nil {
+		return Traffic{}, err
+	}
+	if code != http.StatusOK {
+		return Traffic{}, ErrController
+	}
+	var totals struct {
+		UploadTotal   int64 `json:"uploadTotal"`
+		DownloadTotal int64 `json:"downloadTotal"`
+	}
+	if err := json.Unmarshal(body, &totals); err != nil {
+		return Traffic{}, ErrController
+	}
+	out := Traffic{UploadTotal: totals.UploadTotal, DownloadTotal: totals.DownloadTotal}
+	up, down, speedErr := c.oneSpeed(ctx)
+	if speedErr == nil {
+		out.Up = up
+		out.Down = down
+	}
+	return out, nil
+}
+
+func (c *Client) oneSpeed(ctx context.Context) (int64, int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
+	defer cancel()
+	host := strings.TrimPrefix(strings.TrimPrefix(c.base, "http://"), "https://")
+	target := url.URL{Scheme: "http", Host: host, Path: "/traffic"}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
+	if err != nil {
+		return 0, 0, ErrController
+	}
+	req.Header.Set("Authorization", "Bearer "+c.secret)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, 0, ErrController
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, 0, ErrController
+	}
+	line, err := bufio.NewReader(resp.Body).ReadBytes('\n')
+	if err != nil && len(bytes.TrimSpace(line)) == 0 {
+		return 0, 0, ErrController
+	}
+	var sample struct {
+		Up   int64 `json:"up"`
+		Down int64 `json:"down"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(line), &sample); err != nil {
+		return 0, 0, ErrController
+	}
+	return sample.Up, sample.Down, nil
 }
 
 func (c *Client) Select(ctx context.Context, group, name string) error {
