@@ -102,7 +102,7 @@ func Start() error {
 			return err
 		}
 	}
-	log, err := os.OpenFile(logFile(), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	log, err := openSessionLog()
 	if err != nil {
 		return err
 	}

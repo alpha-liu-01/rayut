@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
+	"github.com/alpha-liu-01/rayut/daemon/internal/redact"
 )
 
 const delayTestURL = "https://www.gstatic.com/generate_204"
@@ -153,6 +154,82 @@ func (c *Client) Groups(ctx context.Context) ([]Group, error) {
 		return groups[i].Name < groups[j].Name
 	})
 	return groups, nil
+}
+
+// Connection is one current-session row. It keeps the destination, rule,
+// chain and byte counts MetaCubeXD shows, and drops the connection id.
+type Connection struct {
+	Destination string `json:"destination"`
+	Rule        string `json:"rule"`
+	Chain       string `json:"chain"`
+	Upload      int64  `json:"upload"`
+	Download    int64  `json:"download"`
+}
+
+func (c *Client) Connections(ctx context.Context) ([]Connection, error) {
+	code, body, err := c.get(ctx, "/connections", "")
+	if err != nil {
+		return nil, err
+	}
+	if code != http.StatusOK {
+		return nil, ErrController
+	}
+	return mapConnections(body)
+}
+
+func mapConnections(body []byte) ([]Connection, error) {
+	var snapshot struct {
+		Connections []struct {
+			Upload      int64    `json:"upload"`
+			Download    int64    `json:"download"`
+			Chains      []string `json:"chains"`
+			Rule        string   `json:"rule"`
+			RulePayload string   `json:"rulePayload"`
+			Metadata    struct {
+				Host            string `json:"host"`
+				SniffHost       string `json:"sniffHost"`
+				DestinationIP   string `json:"destinationIP"`
+				DestinationPort string `json:"destinationPort"`
+			} `json:"metadata"`
+		} `json:"connections"`
+	}
+	if err := json.Unmarshal(body, &snapshot); err != nil {
+		return nil, ErrController
+	}
+	out := make([]Connection, 0, len(snapshot.Connections))
+	for _, item := range snapshot.Connections {
+		host := item.Metadata.SniffHost
+		if host == "" {
+			host = item.Metadata.Host
+		}
+		if host == "" {
+			host = item.Metadata.DestinationIP
+		}
+		destination := host
+		port := item.Metadata.DestinationPort
+		if host != "" && port != "" && port != "0" {
+			destination = host + ":" + port
+		}
+		rule := item.Rule
+		if item.RulePayload != "" {
+			rule = item.Rule + "(" + item.RulePayload + ")"
+		}
+		out = append(out, Connection{
+			Destination: redactText(destination),
+			Rule:        redactText(rule),
+			Chain:       redactText(strings.Join(item.Chains, " → ")),
+			Upload:      item.Upload,
+			Download:    item.Download,
+		})
+		if len(out) == 200 {
+			break
+		}
+	}
+	return out, nil
+}
+
+func redactText(value string) string {
+	return redact.Text(value)
 }
 
 func (c *Client) Select(ctx context.Context, group, name string) error {

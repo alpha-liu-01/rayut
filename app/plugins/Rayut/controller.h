@@ -18,6 +18,8 @@ class Controller : public QObject {
     Q_PROPERTY(QString profileText READ profileText NOTIFY stateChanged)
     Q_PROPERTY(QString versionText READ versionText NOTIFY stateChanged)
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
 
 public:
     explicit Controller(QObject *parent = nullptr);
@@ -30,6 +32,8 @@ public:
     QString profileText() const;
     QString versionText() const;
     QVariantList proxyGroups() const;
+    QVariantList sessionLogs() const;
+    QVariantList sessionConnections() const;
 
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void startHelper(QString password);
@@ -43,6 +47,7 @@ public:
     Q_INVOKABLE void refreshGroups();
     Q_INVOKABLE void selectProxy(const QString &group, const QString &name);
     Q_INVOKABLE void testDelay(const QString &name);
+    Q_INVOKABLE void refreshSession();
 
 signals:
     void stateChanged();
@@ -55,6 +60,8 @@ private:
     void applyStatus(const QByteArray &body);
     void applyProfile(const QByteArray &body);
     void applyGroups(const QByteArray &body);
+    void applyLogs(const QByteArray &body);
+    void applyConnections(const QByteArray &body);
     void postProfile(const QString &path, const QByteArray &payload, const QString &success);
     QString messageFor(const QString &code) const;
 
@@ -71,6 +78,8 @@ private:
     bool m_versionMismatch;
     bool m_stateQueued;
     QVariantList m_proxyGroups;
+    QVariantList m_sessionLogs;
+    QVariantList m_sessionConnections;
 };
 
 #endif

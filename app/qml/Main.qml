@@ -137,6 +137,11 @@ MainView {
                         iconName: "note"
                         text: "订阅"
                         onTriggered: stack.push(profilePage)
+                    },
+                    Action {
+                        iconName: "info"
+                        text: "日志"
+                        onTriggered: stack.push(sessionPage)
                     }
                 ]
             }
@@ -331,6 +336,110 @@ MainView {
             }
 
             Component.onCompleted: Controller.refreshGroups()
+        }
+    }
+
+    Component {
+        id: sessionPage
+
+        Page {
+            header: PageHeader {
+                id: sessionHeader
+                title: "日志"
+            }
+
+            Timer {
+                id: sessionLoad
+                interval: 1
+                onTriggered: Controller.refreshSession()
+            }
+
+            Flickable {
+                id: sessionFlick
+                anchors {
+                    top: sessionHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                contentHeight: sessionColumn.height + units.gu(4)
+                clip: true
+
+                Column {
+                    id: sessionColumn
+                    width: sessionFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(1)
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: Controller.helperRunning ? "" : "请先在首页连接"
+                        visible: text !== ""
+                    }
+
+                    Label {
+                        width: parent.width
+                        text: "连接"
+                        font.bold: true
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        visible: Controller.helperRunning && Controller.sessionConnections.length === 0
+                        text: "这次会话还没有连接"
+                    }
+
+                    Repeater {
+                        model: Controller.sessionConnections
+                        delegate: Label {
+                            width: sessionColumn.width
+                            wrapMode: Text.Wrap
+                            text: modelData.destination + "\n" + modelData.rule + " · " + modelData.chain + "\n上传 " + modelData.upload + " · 下载 " + modelData.download
+                        }
+                    }
+
+                    Label {
+                        width: parent.width
+                        text: "日志"
+                        font.bold: true
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        visible: Controller.helperRunning && Controller.sessionLogs.length === 0
+                        text: "这次会话还没有日志"
+                    }
+
+                    Repeater {
+                        model: Controller.sessionLogs
+                        delegate: Label {
+                            width: sessionColumn.width
+                            wrapMode: Text.Wrap
+                            text: modelData.type + "  " + modelData.payload
+                        }
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "刷新"
+                        enabled: Controller.helperRunning
+                        onClicked: sessionLoad.start()
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                }
+            }
+
+            Component.onCompleted: sessionLoad.start()
         }
     }
 

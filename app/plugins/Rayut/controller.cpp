@@ -19,7 +19,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.9";
+const char kAppVersion[] = "0.1.10";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -92,6 +92,16 @@ QString Controller::profileText() const
 QVariantList Controller::proxyGroups() const
 {
     return m_proxyGroups;
+}
+
+QVariantList Controller::sessionLogs() const
+{
+    return m_sessionLogs;
+}
+
+QVariantList Controller::sessionConnections() const
+{
+    return m_sessionConnections;
 }
 
 QString Controller::versionText() const
@@ -304,6 +314,28 @@ void Controller::selectProxy(const QString &group, const QString &name)
     setMessage(QStringLiteral("已选择"));
 }
 
+void Controller::refreshSession()
+{
+    QByteArray logs;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/logs"), QByteArray(), &logs, 15000)) {
+        m_sessionLogs.clear();
+        m_sessionConnections.clear();
+        setMessage(messageFor(QString::fromUtf8(logs).trimmed()));
+        queueStateChanged();
+        return;
+    }
+    applyLogs(logs);
+    QByteArray connections;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/connections"), QByteArray(), &connections, 15000)) {
+        m_sessionConnections.clear();
+        setMessage(messageFor(QString::fromUtf8(connections).trimmed()));
+        queueStateChanged();
+        return;
+    }
+    applyConnections(connections);
+    setMessage(QString());
+}
+
 void Controller::testDelay(const QString &name)
 {
     setMessage(QStringLiteral("正在测试延迟"));
@@ -477,6 +509,39 @@ void Controller::applyGroups(const QByteArray &body)
             < right.toMap().value(QStringLiteral("name")).toString();
     });
     m_proxyGroups = list;
+    queueStateChanged();
+}
+
+void Controller::applyLogs(const QByteArray &body)
+{
+    const QJsonArray lines = QJsonDocument::fromJson(body).object().value(QStringLiteral("lines")).toArray();
+    QVariantList list;
+    for (const QJsonValue &value : lines) {
+        const QJsonObject line = value.toObject();
+        QVariantMap row;
+        row.insert(QStringLiteral("type"), line.value(QStringLiteral("type")).toString());
+        row.insert(QStringLiteral("payload"), line.value(QStringLiteral("payload")).toString());
+        list.append(row);
+    }
+    m_sessionLogs = list;
+    queueStateChanged();
+}
+
+void Controller::applyConnections(const QByteArray &body)
+{
+    const QJsonArray rows = QJsonDocument::fromJson(body).object().value(QStringLiteral("connections")).toArray();
+    QVariantList list;
+    for (const QJsonValue &value : rows) {
+        const QJsonObject row = value.toObject();
+        QVariantMap item;
+        item.insert(QStringLiteral("destination"), row.value(QStringLiteral("destination")).toString());
+        item.insert(QStringLiteral("rule"), row.value(QStringLiteral("rule")).toString());
+        item.insert(QStringLiteral("chain"), row.value(QStringLiteral("chain")).toString());
+        item.insert(QStringLiteral("upload"), QString::number(row.value(QStringLiteral("upload")).toVariant().toLongLong()));
+        item.insert(QStringLiteral("download"), QString::number(row.value(QStringLiteral("download")).toVariant().toLongLong()));
+        list.append(item);
+    }
+    m_sessionConnections = list;
     queueStateChanged();
 }
 

@@ -21,15 +21,16 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.9"
+	HelperVersion = "0.1.10"
 	APIVersion    = "1"
 )
 
 type Server struct {
-	token  string
-	mu     sync.Mutex
-	http   *http.Server
-	groups groupAPI
+	token   string
+	mu      sync.Mutex
+	http    *http.Server
+	groups  groupAPI
+	session sessionAPI
 }
 
 func New() (*Server, error) {
@@ -61,6 +62,8 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/proxy-groups", s.auth(s.proxyGroups))
 	mux.HandleFunc("/v1/proxy-groups/", s.auth(s.proxyGroupSelection))
 	mux.HandleFunc("/v1/proxies/", s.auth(s.proxyDelay))
+	mux.HandleFunc("/v1/logs", s.auth(s.logs))
+	mux.HandleFunc("/v1/connections", s.auth(s.connections))
 	s.http = &http.Server{
 		Addr:              ListenAddr,
 		Handler:           mux,

@@ -7,6 +7,7 @@ func TestOverlayControllerReplacesListenSecret(t *testing.T) {
 		"secret":              "hidden",
 		"external-controller": "0.0.0.0:9090",
 		"external-ui":         "/tmp/ui",
+		"log-file":            "/tmp/mihomo.log",
 		"proxies":             []any{},
 	}
 	overlayController(root, "generated")
@@ -18,6 +19,9 @@ func TestOverlayControllerReplacesListenSecret(t *testing.T) {
 	}
 	if _, ok := root["external-ui"]; ok {
 		t.Fatal("external-ui remained")
+	}
+	if _, ok := root["log-file"]; ok {
+		t.Fatal("log-file remained")
 	}
 	if root["unified-delay"] != true {
 		t.Fatal("unified delay was not enabled")

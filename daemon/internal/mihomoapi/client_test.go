@@ -159,3 +159,24 @@ func TestDelayFailureIsExplicit(t *testing.T) {
 		t.Fatalf("err %v", err)
 	}
 }
+
+func TestConnectionsKeepFieldsAndDropSecrets(t *testing.T) {
+	const body = `{"downloadTotal":10,"uploadTotal":4,"connections":[{"id":"11111111-2222-3333-4444-555555555555","upload":4,"download":10,"chains":["节点","Rayut"],"rule":"Domain","rulePayload":"example.com","metadata":{"host":"example.com","destinationIP":"203.0.113.10","destinationPort":"443","sourceIP":"10.0.0.8","processPath":"/usr/bin/secret","password":"super-secret-password","public-key":"reality-public-key"}}]}`
+	got, err := mapConnections([]byte(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Destination != "example.com:443" || got[0].Rule != "Domain(example.com)" || got[0].Chain != "节点 → Rayut" || got[0].Upload != 4 || got[0].Download != 10 {
+		t.Fatalf("%+v", got)
+	}
+	raw, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	for _, secret := range []string{"11111111-2222-3333-4444-555555555555", "super-secret-password", "reality-public-key", "10.0.0.8", "/usr/bin/secret", "203.0.113.10"} {
+		if strings.Contains(text, secret) {
+			t.Fatalf("leaked %s in %s", secret, text)
+		}
+	}
+}

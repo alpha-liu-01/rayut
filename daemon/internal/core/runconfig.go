@@ -51,6 +51,7 @@ func overlayController(root map[string]any, secret string) {
 	delete(root, "external-controller-unix")
 	delete(root, "external-controller-pipe")
 	delete(root, "external-ui")
+	delete(root, "log-file")
 }
 
 func externalSecret() (string, error) {
