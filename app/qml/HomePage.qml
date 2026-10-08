@@ -16,7 +16,6 @@ Page {
     property bool searching: false
     property string filterText: ""
     property string shownSelector: ""
-    property bool pendingTraffic: false
     property int revealNonce: 0
 
     function byteText(value) {
@@ -85,27 +84,6 @@ Page {
         work.start()
     }
 
-    function openOnConnection() {
-        var groups = Controller.proxySelectors
-        if (groups.length === 0)
-            return false
-        homeRoot.pendingTraffic = false
-        homeRoot.revealNonce = homeRoot.revealNonce + 1
-        var trafficName = ""
-        for (var i = 0; i < groups.length; i++) {
-            if (groups[i].traffic) {
-                trafficName = groups[i].name
-                break
-            }
-        }
-        if (trafficName !== "" && Controller.selectorName !== trafficName) {
-            Controller.showSelector(trafficName)
-            return true
-        }
-        homeRoot.shownSelector = ""
-        return false
-    }
-
     function revealPolicy() {
         var groups = Controller.proxySelectors
         for (var i = 0; i < groups.length; i++) {
@@ -146,7 +124,8 @@ Page {
 
     onVisibleChanged: {
         if (visible) {
-            pendingTraffic = true
+            shownSelector = ""
+            revealNonce = revealNonce + 1
             Controller.refreshTraffic()
             Controller.refreshProfileGroups()
         }
@@ -343,8 +322,6 @@ Page {
             Connections {
                 target: Controller
                 onStateChanged: {
-                    if (homeRoot.pendingTraffic && homeRoot.openOnConnection())
-                        return
                     if (Controller.selectorName === homeRoot.shownSelector)
                         return
                     homeRoot.shownSelector = Controller.selectorName

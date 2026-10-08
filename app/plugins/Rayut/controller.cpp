@@ -22,6 +22,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcess>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QThread>
 #include <QTimer>
@@ -796,6 +797,8 @@ void Controller::showSelector(const QString &name)
         return;
     }
     m_selectorName = name;
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.rayut"), QStringLiteral("rayut"));
+    settings.setValue(QStringLiteral("policy-group"), name);
     queueStateChanged();
 }
 
@@ -1080,6 +1083,9 @@ void Controller::applySelectors(const QByteArray &body)
     QString firstManual;
     QString firstName;
     QString trafficName;
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.rayut"), QStringLiteral("rayut"));
+    const QString saved = settings.value(QStringLiteral("policy-group")).toString();
+    bool savedHere = false;
     for (const QJsonValue &value : groups) {
         const QJsonObject group = value.toObject();
         const QString name = group.value(QStringLiteral("name")).toString();
@@ -1112,13 +1118,18 @@ void Controller::applySelectors(const QByteArray &body)
         if (trafficName.isEmpty() && group.value(QStringLiteral("traffic")).toBool()) {
             trafficName = name;
         }
+        if (!saved.isEmpty() && name == saved) {
+            savedHere = true;
+        }
         if (name == m_selectorName) {
             keep = true;
         }
     }
     m_proxySelectors = list;
     if (!keep) {
-        if (!trafficName.isEmpty()) {
+        if (savedHere) {
+            m_selectorName = saved;
+        } else if (!trafficName.isEmpty()) {
             m_selectorName = trafficName;
         } else {
             m_selectorName = !firstManual.isEmpty() ? firstManual : firstName;
