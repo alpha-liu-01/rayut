@@ -1,14 +1,14 @@
 Binaries in this click. Each one has a version, a license, and a source.
 
 Binary: rayut
-Version: 0.1.29
+Version: 0.1.30
 License: GPL-3.0-or-later
 Source: https://github.com/alpha-liu-01/rayut
 
-The interface program. It is built from this repository and installed at the click root.
+The interface program. The click package name is rayut.alphaliu01. It is built from this repository and installed at the click root.
 
 Binary: rayutd
-Version: 0.1.29
+Version: 0.1.30
 License: GPL-3.0-or-later
 Source: https://github.com/alpha-liu-01/rayut
 

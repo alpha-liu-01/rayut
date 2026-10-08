@@ -19,8 +19,8 @@ Rayut 是 Ubuntu Touch 上的全局代理。界面启动一个以 root 运行的
 
 随包装上的每一份二进制都有版本、许可证和来源。应用里的关于页打开的是同一份清单。
 
-- `rayut` 0.1.29，GPL-3.0-or-later，https://github.com/alpha-liu-01/rayut
-- `rayutd` 0.1.29，GPL-3.0-or-later，同一仓库的 `daemon/` 目录
+- `rayut` 0.1.30，GPL-3.0-or-later，https://github.com/alpha-liu-01/rayut
+- `rayutd` 0.1.30，GPL-3.0-or-later，同一仓库的 `daemon/` 目录
 - `mihomo` v1.19.32，GPL-3.0，https://github.com/MetaCubeX/mihomo/tree/v1.19.32
 
 mihomo 用的是该 tag 的官方 linux-arm64 压缩包：
@@ -58,12 +58,12 @@ Click 使用 `app/rayut.apparmor` 里的 unconfined 模板。受限制的 Click 
 
 ## 构建
 
-在 `app/` 下，并且 `packaging/core/rayutd` 和 `packaging/core/mihomo` 已经放好时：
+Click 包名是 `rayut.alphaliu01`。在仓库根目录执行：
 
 ```
-clickable build --arch arm64
+packaging/build-click.sh
 ```
 
-助手从 `daemon/` 构建，目标是 `linux/arm64`。界面语言见 `app/translations/README.md`。
+这条命令从 `daemon/` 构建 `linux/arm64` 的 `rayutd`，下载清单里钉住的 mihomo 压缩包并核对 SHA-256，然后构建 Click。它不使用本机的探针目录。`go` 和 `clickable` 需要在 `PATH` 里。界面语言见 `app/translations/README.md`。
 
 English: `README.md`.

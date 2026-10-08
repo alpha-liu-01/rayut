@@ -2,6 +2,12 @@ package paths
 
 import "testing"
 
+func TestAppID(t *testing.T) {
+	if appID != "rayut.alphaliu01" {
+		t.Fatal(appID)
+	}
+}
+
 func TestNumericPair(t *testing.T) {
 	uid, gid, ok := numericPair("32011", "32011")
 	if !ok || uid != 32011 || gid != 32011 {

@@ -1,14 +1,14 @@
 这个安装包里的二进制。每一份都有版本、许可证和来源。
 
 二进制：rayut
-版本：0.1.29
+版本：0.1.30
 许可证：GPL-3.0-or-later
 来源：https://github.com/alpha-liu-01/rayut
 
-界面程序。由本仓库构建，装在 Click 根目录。
+界面程序。Click 包名是 rayut.alphaliu01。由本仓库构建，装在 Click 根目录。
 
 二进制：rayutd
-版本：0.1.29
+版本：0.1.30
 许可证：GPL-3.0-or-later
 来源：https://github.com/alpha-liu-01/rayut
 

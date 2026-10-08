@@ -1,5 +1,5 @@
 {
-    "name": "rayut.rayut",
+    "name": "rayut.alphaliu01",
     "description": "Global proxy for Ubuntu Touch",
     "architecture": "$ENV{ARCH}",
     "title": "Rayut",
@@ -9,7 +9,7 @@
             "desktop": "rayut.desktop"
         }
     },
-    "version": "0.1.29",
+    "version": "0.1.30",
     "maintainer": "alpha-liu-01 <alpha-liu-01@users.noreply.github.com>",
     "framework": "$ENV{CLICK_FRAMEWORK}"
 }

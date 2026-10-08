@@ -32,7 +32,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.29";
+const char kAppVersion[] = "0.1.30";
 const char kApiVersion[] = "1";
 
 bool sameNodeShape(const QVariantMap &left, const QVariantMap &right)
@@ -1001,7 +1001,7 @@ void Controller::showSelector(const QString &name)
         return;
     }
     m_selectorName = name;
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.rayut"), QStringLiteral("rayut"));
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.alphaliu01"), QStringLiteral("rayut"));
     settings.setValue(QStringLiteral("policy-group"), name);
     queueStateChanged();
 }
@@ -1369,7 +1369,7 @@ bool Controller::applySelectors(const QByteArray &body)
     QString firstManual;
     QString firstName;
     QString trafficName;
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.rayut"), QStringLiteral("rayut"));
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, QStringLiteral("rayut.alphaliu01"), QStringLiteral("rayut"));
     const QString saved = settings.value(QStringLiteral("policy-group")).toString();
     bool savedHere = false;
     for (const QJsonValue &value : groups) {

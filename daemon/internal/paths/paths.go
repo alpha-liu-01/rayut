@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const appID = "rayut.rayut"
+const appID = "rayut.alphaliu01"
 
 var (
 	Mihomo      string
@@ -27,8 +27,8 @@ var (
 )
 
 // Init resolves the Click-relative core and the per-user data directories.
-// The data directories match QStandardPaths for application name rayut.rayut:
-// ~/.local/share/rayut.rayut and ~/.config/rayut.rayut.
+// The data directories match QStandardPaths for application name rayut.alphaliu01:
+// ~/.local/share/rayut.alphaliu01 and ~/.config/rayut.alphaliu01.
 func Init() error {
 	exe, err := os.Executable()
 	if err != nil {

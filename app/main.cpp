@@ -10,7 +10,7 @@
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("rayut.rayut"));
+    app.setApplicationName(QStringLiteral("rayut.alphaliu01"));
 
     // Source strings are English. A rayut_<locale>.qm in translations/ is loaded
     // for the system locale, so another language is a new file, not a code change.

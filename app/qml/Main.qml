@@ -9,7 +9,7 @@ import Rayut 1.0
 MainView {
     id: root
     objectName: "mainView"
-    applicationName: "rayut.rayut"
+    applicationName: "rayut.alphaliu01"
     anchorToKeyboard: true
 
     width: units.gu(45)

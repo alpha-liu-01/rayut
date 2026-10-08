@@ -1,5 +1,5 @@
 Rayut
-版本：0.1.29
+版本：0.1.30
 许可证：GPL-3.0-or-later
 来源：https://github.com/alpha-liu-01/rayut
 
