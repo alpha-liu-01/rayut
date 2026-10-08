@@ -46,7 +46,6 @@ class Controller : public QObject {
     Q_PROPERTY(QString profileText READ profileText NOTIFY stateChanged)
     Q_PROPERTY(QString ruleTemplate READ ruleTemplate NOTIFY stateChanged)
     Q_PROPERTY(QString versionText READ versionText NOTIFY stateChanged)
-    Q_PROPERTY(QString ipv6Text READ ipv6Text CONSTANT)
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
@@ -84,7 +83,6 @@ public:
     QString profileText() const;
     QString ruleTemplate() const;
     QString versionText() const;
-    QString ipv6Text() const;
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
     QVariantList sessionConnections() const;

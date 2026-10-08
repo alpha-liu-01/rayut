@@ -363,6 +363,36 @@ Page {
                     boundsBehavior: Flickable.StopAtBounds
                     cacheBuffer: units.gu(40)
                     model: index === pager.currentIndex && homeRoot.groupMatches(index) ? homeRoot.filteredNodes() : []
+                    property real keptY: 0
+                    property string keptKey: ""
+
+                    onContentYChanged: {
+                        if (moving || dragging || flicking)
+                            keptY = contentY
+                    }
+
+                    Timer {
+                        id: scrollKeep
+                        interval: 1
+                        property real y: 0
+                        onTriggered: nodes.contentY = y
+                    }
+
+                    Connections {
+                        target: Controller
+                        onStateChanged: {
+                            if (nodes.moving || nodes.dragging || nodes.flicking)
+                                return
+                            var key = Controller.viewedGroup + "/" + Controller.selectorName
+                            if (key !== nodes.keptKey) {
+                                nodes.keptKey = key
+                                nodes.keptY = 0
+                                return
+                            }
+                            scrollKeep.y = nodes.keptY
+                            scrollKeep.restart()
+                        }
+                    }
 
                 delegate: Item {
                     width: nodes.width
@@ -515,12 +545,6 @@ Page {
                 wrapMode: Text.Wrap
                 color: theme.palette.normal.backgroundText
                 text: Controller.versionText
-            }
-
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: Controller.ipv6Text
             }
 
             Label {

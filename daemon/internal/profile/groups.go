@@ -91,7 +91,7 @@ func (s *Store) Nodes(id string) ([]NodeInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	selected := selectedProxy(doc)
+	selected := effectiveNode(doc)
 	links := s.readMap(s.groupLinks(id))
 	delays := s.readDelayMap(id)
 	fields := projectProxies(doc)
@@ -314,6 +314,23 @@ func (s *Store) Selectors(id string) ([]SelectorInfo, error) {
 	return projectSelectors(doc, s.readMap(s.groupLinks(id)), s.readDelayMap(id)), nil
 }
 
+// RuntimeSelects lists the manual groups whose live selection must follow a tap.
+// The first entry is the group on screen. A later entry is the group named by
+// MATCH, which is the one that actually carries traffic.
+func (s *Store) RuntimeSelects(id, selector, name string) ([][2]string, error) {
+	if err := s.ensureGroups(); err != nil {
+		return nil, err
+	}
+	if _, ok := s.metaByID(id); !ok {
+		return nil, errCode("group missing")
+	}
+	doc, err := s.readGroupDoc(id)
+	if err != nil {
+		return nil, err
+	}
+	return runtimeSelects(doc, strings.TrimSpace(selector), strings.TrimSpace(name)), nil
+}
+
 // SelectNode writes now on one manual select group. An empty selector picks
 // the first select group that lists the node. Automatic groups are refused.
 func (s *Store) SelectNode(id, selector, name string) ([]NodeInfo, error) {
@@ -335,6 +352,7 @@ func (s *Store) SelectNode(id, selector, name string) ([]NodeInfo, error) {
 	if err := markSelected(doc, selector, name); err != nil {
 		return nil, err
 	}
+	pointTraffic(doc, selector, name)
 	out, err := yaml.Marshal(doc)
 	if err != nil {
 		return nil, errCode("invalid yaml")
@@ -894,12 +912,15 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 	}
 	groups, _ := doc["proxy-groups"].([]any)
 	out := make([]SelectorInfo, 0)
+	active := effectiveNode(doc)
+	traffic := matchTarget(doc)
 	for _, item := range groups {
 		group, ok := item.(map[string]any)
 		if !ok || !selectableKind(scalarText(group["type"])) {
 			continue
 		}
 		now := scalarText(group["now"])
+		groupName := scalarText(group["name"])
 		list, _ := group["proxies"].([]any)
 		nodes := make([]NodeInfo, 0, len(list))
 		for _, entry := range list {
@@ -907,7 +928,8 @@ func projectSelectors(doc map[string]any, links map[string]string, delays map[st
 			if nodeName == "" {
 				continue
 			}
-			info := NodeInfo{Index: -1, Name: nodeName, Selected: nodeName == now}
+			onPath := groupName == traffic && now != "" && nodeName == now
+			info := NodeInfo{Index: -1, Name: nodeName, Selected: onPath || (active != "" && nodeName == active)}
 			if field, ok := fields[nodeName]; ok {
 				info.Index = field.Index
 				info.Type = field.Type
@@ -976,6 +998,94 @@ func proxyListed(group map[string]any, name string) bool {
 		}
 	}
 	return false
+}
+
+func matchTarget(doc map[string]any) string {
+	rules, _ := doc["rules"].([]any)
+	target := ""
+	for _, item := range rules {
+		text := strings.TrimSpace(scalarText(item))
+		if !strings.HasPrefix(strings.ToUpper(text), "MATCH,") {
+			continue
+		}
+		parts := strings.Split(text, ",")
+		target = strings.TrimSpace(parts[len(parts)-1])
+	}
+	return target
+}
+
+func groupByName(doc map[string]any, name string) map[string]any {
+	if name == "" {
+		return nil
+	}
+	groups, _ := doc["proxy-groups"].([]any)
+	for _, item := range groups {
+		group, ok := item.(map[string]any)
+		if ok && scalarText(group["name"]) == name {
+			return group
+		}
+	}
+	return nil
+}
+
+// effectiveNode is the node a new connection uses. It follows MATCH, then each
+// group's now when that value names another group. An empty now does not guess.
+func effectiveNode(doc map[string]any) string {
+	name := matchTarget(doc)
+	if name == "" {
+		return selectedProxy(doc)
+	}
+	for i := 0; i < 6; i++ {
+		group := groupByName(doc, name)
+		if group == nil {
+			return name
+		}
+		now := scalarText(group["now"])
+		if now == "" || now == name {
+			return ""
+		}
+		name = now
+	}
+	return ""
+}
+
+func pointTraffic(doc map[string]any, viewed, node string) {
+	traffic := matchTarget(doc)
+	if traffic == "" || traffic == viewed {
+		return
+	}
+	group := groupByName(doc, traffic)
+	if group == nil || !manualSelect(scalarText(group["type"])) {
+		return
+	}
+	if proxyListed(group, node) {
+		group["now"] = node
+		return
+	}
+	if viewed != "" && proxyListed(group, viewed) {
+		group["now"] = viewed
+	}
+}
+
+func runtimeSelects(doc map[string]any, selector, name string) [][2]string {
+	var out [][2]string
+	if group := groupByName(doc, selector); group != nil && manualSelect(scalarText(group["type"])) && proxyListed(group, name) {
+		out = append(out, [2]string{selector, name})
+	}
+	traffic := matchTarget(doc)
+	if traffic == "" || traffic == selector {
+		return out
+	}
+	group := groupByName(doc, traffic)
+	if group == nil || !manualSelect(scalarText(group["type"])) {
+		return out
+	}
+	if proxyListed(group, name) {
+		out = append(out, [2]string{traffic, name})
+	} else if selector != "" && proxyListed(group, selector) {
+		out = append(out, [2]string{traffic, selector})
+	}
+	return out
 }
 
 func selectedProxy(doc map[string]any) string {

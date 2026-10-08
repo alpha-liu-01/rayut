@@ -267,15 +267,23 @@ func (s *Server) groupSelect(w http.ResponseWriter, r *http.Request, id string) 
 				http.Error(w, "not selectable", http.StatusBadRequest)
 				return
 			}
+			targets, err := store.RuntimeSelects(id, selector, body.Name)
+			if err != nil {
+				s.mu.Unlock()
+				http.Error(w, profile.Code(err), http.StatusBadRequest)
+				return
+			}
 			s.mu.Unlock()
 			client, err := mihomoapi.Default()
 			if err != nil {
 				http.Error(w, "controller unavailable", http.StatusConflict)
 				return
 			}
-			if err := client.Select(r.Context(), selector, body.Name); err != nil {
-				http.Error(w, "selection rejected", http.StatusConflict)
-				return
+			for _, target := range targets {
+				if err := client.Select(r.Context(), target[0], target[1]); err != nil {
+					http.Error(w, "selection rejected", http.StatusConflict)
+					return
+				}
 			}
 			s.mu.Lock()
 			store = s.profileStore()

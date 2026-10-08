@@ -192,3 +192,61 @@ rules:
 		t.Fatalf("%+v %v", selectors, err)
 	}
 }
+
+func TestSelectNodeFollowsTheMatchRule(t *testing.T) {
+	const doc = `proxies:
+  - {name: alpha, type: ss, server: example.com, port: 1, cipher: aes-128-gcm, password: secret-alpha}
+  - {name: japan, type: ss, server: example.com, port: 2, cipher: aes-128-gcm, password: secret-beta}
+proxy-groups:
+  - {name: 日本, type: select, proxies: [japan], now: japan}
+  - {name: 漏网, type: select, proxies: [alpha, japan], now: alpha}
+rules:
+  - MATCH,漏网
+`
+	store := &Store{Dir: t.TempDir(), Test: func(string) error { return nil }}
+	groups, err := store.ImportText("订阅", doc)
+	if err != nil || len(groups) != 1 {
+		t.Fatal(err)
+	}
+	if _, err := store.SelectNode(groups[0].ID, "日本", "japan"); err != nil {
+		t.Fatal(err)
+	}
+	selectors, err := store.Selectors(groups[0].ID)
+	if err != nil || selectors[0].Now != "japan" || selectors[1].Now != "japan" {
+		t.Fatalf("%+v %v", selectors, err)
+	}
+	if !selectors[1].Nodes[1].Selected || selectors[1].Nodes[0].Selected || !selectors[0].Nodes[0].Selected {
+		t.Fatalf("mark %+v", selectors)
+	}
+}
+
+func TestSelectNodePointsMatchAtTheGroup(t *testing.T) {
+	const doc = `proxies:
+  - {name: alpha, type: ss, server: example.com, port: 1, cipher: aes-128-gcm, password: secret-alpha}
+  - {name: japan, type: ss, server: example.com, port: 2, cipher: aes-128-gcm, password: secret-beta}
+proxy-groups:
+  - {name: 日本, type: select, proxies: [japan], now: japan}
+  - {name: 漏网, type: select, proxies: [alpha, 日本], now: alpha}
+rules:
+  - MATCH,漏网
+`
+	store := &Store{Dir: t.TempDir(), Test: func(string) error { return nil }}
+	groups, err := store.ImportText("订阅", doc)
+	if err != nil || len(groups) != 1 {
+		t.Fatal(err)
+	}
+	targets, err := store.RuntimeSelects(groups[0].ID, "日本", "japan")
+	if err != nil || len(targets) != 2 || targets[0] != [2]string{"日本", "japan"} || targets[1] != [2]string{"漏网", "日本"} {
+		t.Fatalf("%+v %v", targets, err)
+	}
+	if _, err := store.SelectNode(groups[0].ID, "日本", "japan"); err != nil {
+		t.Fatal(err)
+	}
+	selectors, err := store.Selectors(groups[0].ID)
+	if err != nil || selectors[0].Now != "japan" || selectors[1].Now != "日本" {
+		t.Fatalf("%+v %v", selectors, err)
+	}
+	if !selectors[0].Nodes[0].Selected || selectors[1].Nodes[0].Selected || !selectors[1].Nodes[1].Selected {
+		t.Fatalf("mark %+v", selectors)
+	}
+}

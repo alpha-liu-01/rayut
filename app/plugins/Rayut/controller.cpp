@@ -28,7 +28,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.19";
+const char kAppVersion[] = "0.1.20";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -367,11 +367,6 @@ void Controller::joinEditLine(int row)
     m_editFocusRow = focusRow;
     m_editFocusColumn = focusColumn;
     emit editFocusChanged();
-}
-
-QString Controller::ipv6Text() const
-{
-    return QStringLiteral("IPv6 和 IPv4 走同一个节点。");
 }
 
 QString Controller::versionText() const

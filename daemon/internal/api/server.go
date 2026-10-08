@@ -23,7 +23,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.19"
+	HelperVersion = "0.1.20"
 	APIVersion    = "1"
 )
 

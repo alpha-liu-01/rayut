@@ -392,12 +392,6 @@ MainView {
                 Label {
                     width: parent.width
                     wrapMode: Text.Wrap
-                    text: Controller.ipv6Text
-                }
-
-                Label {
-                    width: parent.width
-                    wrapMode: Text.Wrap
                     text: Controller.versionText
                 }
             }
