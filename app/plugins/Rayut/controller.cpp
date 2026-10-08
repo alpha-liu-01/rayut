@@ -29,7 +29,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.25";
+const char kAppVersion[] = "0.1.26";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -158,6 +158,8 @@ Controller::Controller(QObject *parent)
     , m_configBroken(false)
     , m_versionMismatch(false)
     , m_killSwitch(false)
+    , m_allowLan(false)
+    , m_lanPort(0)
     , m_networkBlocked(false)
     , m_stateQueued(false)
     , m_editLines(new EditLineModel(this))
@@ -193,6 +195,16 @@ bool Controller::versionMismatch() const
 bool Controller::killSwitch() const
 {
     return m_killSwitch;
+}
+
+bool Controller::allowLan() const
+{
+    return m_allowLan;
+}
+
+int Controller::lanPort() const
+{
+    return m_lanPort;
 }
 
 bool Controller::networkBlocked() const
@@ -432,7 +444,7 @@ void Controller::refresh()
 {
     QByteArray body;
     if (!request(QStringLiteral("GET"), QStringLiteral("/v1/status"), QByteArray(), &body, 30000)) {
-        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || m_killSwitch || m_networkBlocked || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty()
+        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || m_killSwitch || m_allowLan || m_lanPort != 0 || m_networkBlocked || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty()
             || m_sessionUpload != 0 || m_sessionDownload != 0 || m_uploadRate != 0 || m_downloadRate != 0
             || m_totalUpload != 0 || m_totalDownload != 0 || !m_trafficSamples.isEmpty();
         m_helperRunning = false;
@@ -441,6 +453,8 @@ void Controller::refresh()
         m_configBroken = false;
         m_versionMismatch = false;
         m_killSwitch = false;
+        m_allowLan = false;
+        m_lanPort = 0;
         m_networkBlocked = false;
         m_configState = QStringLiteral("ok");
         m_profileText.clear();
@@ -576,6 +590,23 @@ void Controller::setKillSwitch(bool on)
     }
     m_killSwitch = QJsonDocument::fromJson(body).object().value(QStringLiteral("enabled")).toBool();
     queueStateChanged();
+}
+
+void Controller::setAllowLan(bool on)
+{
+    setMessage(QStringLiteral("正在应用"));
+    QJsonObject object;
+    object.insert(QStringLiteral("enabled"), on);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/lan"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 40000)) {
+        return;
+    }
+    const QJsonObject response = QJsonDocument::fromJson(body).object();
+    m_allowLan = response.value(QStringLiteral("enabled")).toBool();
+    m_lanPort = response.value(QStringLiteral("port")).toInt();
+    queueStateChanged();
+    refreshStatus();
+    setMessage(QString());
 }
 
 void Controller::toggleProxy()
@@ -1663,7 +1694,9 @@ void Controller::applyStatus(const QByteArray &body)
     }
     const bool blocked = object.value(QStringLiteral("network")).toString() == QLatin1String("blocked");
     const bool killOn = object.value(QStringLiteral("killSwitch")).toString() == QLatin1String("on");
-    if (helper == m_helperRunning && tun == m_tunRunning && core == m_coreRunning && config == m_configState && (mismatch || missingVersion) == m_versionMismatch && versionText == m_versionText && blocked == m_networkBlocked && killOn == m_killSwitch) {
+    const bool allowOn = object.value(QStringLiteral("allowLan")).toString() == QLatin1String("on");
+    const int lanPort = object.value(QStringLiteral("lanPort")).toString().toInt();
+    if (helper == m_helperRunning && tun == m_tunRunning && core == m_coreRunning && config == m_configState && (mismatch || missingVersion) == m_versionMismatch && versionText == m_versionText && blocked == m_networkBlocked && killOn == m_killSwitch && allowOn == m_allowLan && lanPort == m_lanPort) {
         return;
     }
     m_helperRunning = helper;
@@ -1673,6 +1706,8 @@ void Controller::applyStatus(const QByteArray &body)
     m_versionMismatch = mismatch || missingVersion;
     m_networkBlocked = blocked;
     m_killSwitch = killOn;
+    m_allowLan = allowOn;
+    m_lanPort = lanPort;
     m_versionText = versionText;
     queueStateChanged();
 }

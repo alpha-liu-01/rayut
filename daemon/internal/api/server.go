@@ -9,11 +9,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/core"
 	"github.com/alpha-liu-01/rayut/daemon/internal/killswitch"
+	"github.com/alpha-liu-01/rayut/daemon/internal/lan"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 	"github.com/alpha-liu-01/rayut/daemon/internal/traffic"
@@ -24,7 +26,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.25"
+	HelperVersion = "0.1.26"
 	APIVersion    = "1"
 )
 
@@ -71,6 +73,7 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/health", s.auth(s.health))
 	mux.HandleFunc("/v1/status", s.auth(s.status))
 	mux.HandleFunc("/v1/kill-switch", s.auth(s.killSwitch))
+	mux.HandleFunc("/v1/lan", s.auth(s.allowLan))
 	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
 	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
 	mux.HandleFunc("/v1/profiles", s.auth(s.profiles))
@@ -158,21 +161,27 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, s.snapshot())
 		return
 	}
-	if err := route.Recover(); err != nil {
-		http.Error(w, "recover failed", http.StatusInternalServerError)
+	if err := s.startTun(); err != nil {
+		message := "start failed"
+		switch err.Error() {
+		case "profile missing", "core missing", "recover failed", "tun failed", "start failed":
+			message = err.Error()
+		}
+		http.Error(w, message, http.StatusInternalServerError)
 		return
+	}
+	writeJSON(w, s.snapshot())
+}
+
+func (s *Server) startTun() error {
+	if err := route.Recover(); err != nil {
+		return fmt.Errorf("recover failed")
 	}
 	if err := s.profileStore().SyncActive(); err != nil {
-		http.Error(w, "start failed", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("start failed")
 	}
 	if err := core.Start(); err != nil {
-		if err.Error() == "profile missing" || err.Error() == "core missing" {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		http.Error(w, "start failed", http.StatusInternalServerError)
-		return
+		return err
 	}
 	if err := core.WaitTun(15 * time.Second); err != nil {
 		core.BeginStop()
@@ -183,8 +192,7 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 		s.watch.WasUp = false
 		s.watch.Blocked = false
 		s.coreMu.Unlock()
-		http.Error(w, "tun failed", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("tun failed")
 	}
 	if err := route.PinIPv6Gateways(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -193,7 +201,7 @@ func (s *Server) enable(w http.ResponseWriter, r *http.Request) {
 	s.watch.WasUp = true
 	s.watch.Blocked = false
 	s.coreMu.Unlock()
-	writeJSON(w, s.snapshot())
+	return nil
 }
 
 func (s *Server) disable(w http.ResponseWriter, r *http.Request) {
@@ -259,12 +267,18 @@ func (s *Server) snapshot() map[string]string {
 	if killswitch.Enabled() {
 		sw = "on"
 	}
+	share := "off"
+	if lan.Enabled() {
+		share = "on"
+	}
 	return map[string]string{
 		"mihomo":        state,
 		"tun":           tun,
 		"config":        config,
 		"network":       network,
 		"killSwitch":    sw,
+		"allowLan":      share,
+		"lanPort":       strconv.Itoa(core.ListenPort()),
 		"helperVersion": HelperVersion,
 		"apiVersion":    APIVersion,
 		"coreVersion":   core.Version(),
@@ -288,6 +302,43 @@ func (s *Server) killSwitch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, map[string]bool{"enabled": killswitch.Enabled()})
+	default:
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *Server) allowLan(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, map[string]any{"enabled": lan.Enabled(), "port": core.ListenPort()})
+	case http.MethodPost:
+		var body struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 256)).Decode(&body); err != nil {
+			http.Error(w, "invalid", http.StatusBadRequest)
+			return
+		}
+		previous := lan.Enabled()
+		if err := lan.Set(body.Enabled); err != nil {
+			http.Error(w, "save failed", http.StatusInternalServerError)
+			return
+		}
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if _, ok := core.Alive(); ok {
+			if err := s.stopTun(); err != nil {
+				_ = lan.Set(previous)
+				http.Error(w, "apply failed", http.StatusInternalServerError)
+				return
+			}
+			if err := s.startTun(); err != nil {
+				_ = lan.Set(previous)
+				http.Error(w, "apply failed", http.StatusInternalServerError)
+				return
+			}
+		}
+		writeJSON(w, map[string]any{"enabled": lan.Enabled(), "port": core.ListenPort()})
 	default:
 		http.Error(w, "method", http.StatusMethodNotAllowed)
 	}

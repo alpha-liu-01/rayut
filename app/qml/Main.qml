@@ -1073,6 +1073,30 @@ MainView {
                     }
                 }
 
+                Row {
+                    width: parent.width
+                    spacing: units.gu(1)
+
+                    Label {
+                        width: parent.width - lanSwitch.width - units.gu(1)
+                        height: lanSwitch.height
+                        verticalAlignment: Text.AlignVCenter
+                        text: "局域网共享"
+                    }
+
+                    Switch {
+                        id: lanSwitch
+                        checked: Controller.allowLan
+                        onClicked: Controller.setAllowLan(!Controller.allowLan)
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
+                }
+
                 Button {
                     width: parent.width
                     text: "订阅分组"

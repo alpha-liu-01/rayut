@@ -42,6 +42,8 @@ class Controller : public QObject {
     Q_PROPERTY(bool tunRunning READ tunRunning NOTIFY stateChanged)
     Q_PROPERTY(bool versionMismatch READ versionMismatch NOTIFY stateChanged)
     Q_PROPERTY(bool killSwitch READ killSwitch NOTIFY stateChanged)
+    Q_PROPERTY(bool allowLan READ allowLan NOTIFY stateChanged)
+    Q_PROPERTY(int lanPort READ lanPort NOTIFY stateChanged)
     Q_PROPERTY(bool networkBlocked READ networkBlocked NOTIFY stateChanged)
     Q_PROPERTY(QString summary READ summary NOTIFY stateChanged)
     Q_PROPERTY(QString message READ message NOTIFY stateChanged)
@@ -81,6 +83,8 @@ public:
     bool tunRunning() const;
     bool versionMismatch() const;
     bool killSwitch() const;
+    bool allowLan() const;
+    int lanPort() const;
     bool networkBlocked() const;
     QString summary() const;
     QString message() const;
@@ -119,6 +123,7 @@ public:
     Q_INVOKABLE void disableTun();
     Q_INVOKABLE void toggleProxy();
     Q_INVOKABLE void setKillSwitch(bool on);
+    Q_INVOKABLE void setAllowLan(bool on);
     Q_INVOKABLE void refreshStatus();
     Q_INVOKABLE void importContent(const QString &content);
     Q_INVOKABLE void importURL(const QString &url);
@@ -201,6 +206,8 @@ private:
     bool m_configBroken;
     bool m_versionMismatch;
     bool m_killSwitch;
+    bool m_allowLan;
+    int m_lanPort;
     bool m_networkBlocked;
     bool m_stateQueued;
     QVariantList m_proxyGroups;

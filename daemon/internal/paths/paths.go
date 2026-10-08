@@ -19,6 +19,7 @@ var (
 	Ready       string
 	HelperPid   string
 	KillSwitch  string
+	AllowLAN    string
 	uid         int
 	gid         int
 )
@@ -48,6 +49,7 @@ func Init() error {
 	Ready = filepath.Join(Runtime, "ready")
 	HelperPid = filepath.Join(Runtime, "rayutd.pid")
 	KillSwitch = filepath.Join(data, "kill-switch")
+	AllowLAN = filepath.Join(data, "allow-lan")
 	return prepareDirs(data, config)
 }
 

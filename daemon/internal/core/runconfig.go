@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/alpha-liu-01/rayut/daemon/internal/lan"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/profile"
 	"gopkg.in/yaml.v3"
@@ -15,6 +17,10 @@ import (
 // ExternalController is the loopback API injected when mihomo starts.
 // The GUI never dials it. rayutd does, with the secret kept in the runtime dir.
 const ExternalController = "127.0.0.1:19090"
+
+// MixedPort is the inbound proxy used when the profile did not set one.
+// The external controller never moves onto this port.
+const MixedPort = 7890
 
 func prepareRunConfig() (string, error) {
 	data, err := os.ReadFile(paths.Profile)
@@ -35,6 +41,7 @@ func prepareRunConfig() (string, error) {
 	profile.EnsureIPv6(root)
 	disableStoredSelection(root)
 	pinSavedSelection(root)
+	applyLAN(root, lan.Enabled())
 	overlayController(root, secret)
 	out, err := yaml.Marshal(root)
 	if err != nil {
@@ -78,6 +85,71 @@ func pinSavedSelection(root map[string]any) {
 			continue
 		}
 		group["default-selected"] = now
+	}
+}
+
+// applyLAN changes only the inbound proxy reachability. The controller
+// address is applied afterwards and stays on loopback either way.
+func applyLAN(root map[string]any, on bool) {
+	if on {
+		root["allow-lan"] = true
+		root["bind-address"] = "*"
+	} else {
+		root["allow-lan"] = false
+		root["bind-address"] = "127.0.0.1"
+	}
+	if firstProxyPort(root) == 0 {
+		root["mixed-port"] = MixedPort
+	}
+}
+
+// ListenPort is the proxy port another device would try. It prefers the
+// profile's own mixed port, then any other inbound port, then MixedPort.
+func ListenPort() int {
+	data, err := os.ReadFile(paths.Profile)
+	if err != nil {
+		return MixedPort
+	}
+	var root map[string]any
+	if yaml.Unmarshal(data, &root) != nil {
+		return MixedPort
+	}
+	if port := firstProxyPort(root); port > 0 {
+		return port
+	}
+	return MixedPort
+}
+
+func firstProxyPort(root map[string]any) int {
+	for _, key := range []string{"mixed-port", "port", "socks-port", "redir-port", "tproxy-port"} {
+		if port := portValue(root[key]); port > 0 {
+			return port
+		}
+	}
+	return 0
+}
+
+func portValue(value any) int {
+	switch typed := value.(type) {
+	case int:
+		return typed
+	case int64:
+		return int(typed)
+	case uint64:
+		if typed > 1<<31 {
+			return 0
+		}
+		return int(typed)
+	case float64:
+		return int(typed)
+	case string:
+		port, err := strconv.Atoi(strings.TrimSpace(typed))
+		if err != nil {
+			return 0
+		}
+		return port
+	default:
+		return 0
 	}
 }
 
