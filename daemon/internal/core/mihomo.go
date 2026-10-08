@@ -8,12 +8,41 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 )
+
+var (
+	versionOnce sync.Once
+	versionText = "unknown"
+)
+
+// Version runs `mihomo -v` once and returns the version token.
+// `mihomo version` is not a version flag and must not be used.
+func Version() string {
+	versionOnce.Do(func() {
+		out, err := exec.Command(paths.Mihomo, "-v").CombinedOutput()
+		text := strings.TrimSpace(string(out))
+		if text == "" {
+			if err != nil {
+				versionText = "unknown"
+			}
+			return
+		}
+		for _, field := range strings.Fields(text) {
+			if strings.HasPrefix(field, "v") && strings.Contains(field, ".") {
+				versionText = field
+				return
+			}
+		}
+		versionText = strings.Split(text, "\n")[0]
+	})
+	return versionText
+}
 
 func pidFile() string { return paths.Runtime + "/mihomo.pid" }
 func logFile() string { return paths.Runtime + "/mihomo.log" }
@@ -77,7 +106,12 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(paths.Mihomo, "-d", paths.Runtime, "-f", paths.Profile)
+	configPath, err := prepareRunConfig()
+	if err != nil {
+		log.Close()
+		return err
+	}
+	cmd := exec.Command(paths.Mihomo, "-d", paths.Runtime, "-f", configPath)
 	cmd.Stdout = log
 	cmd.Stderr = log
 	if err := cmd.Start(); err != nil {

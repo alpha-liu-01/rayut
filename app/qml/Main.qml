@@ -19,6 +19,41 @@ MainView {
         serviceName: "sudo"
     }
 
+    property var authDialogItem: null
+
+    Connections {
+        target: Qt.application
+        onStateChanged: {
+            if (Qt.application.state === Qt.ApplicationSuspended)
+                Qt.quit()
+        }
+    }
+
+    Timer {
+        id: authAction
+        interval: 1
+        property string action: ""
+        onTriggered: {
+            var item = root.authDialogItem
+            if (!item)
+                return
+            if (action === "cancel") {
+                item.clearSecret()
+                root.authDialogItem = null
+                PopupUtils.close(item)
+                return
+            }
+            var entered = item.takePassword()
+            if (!pam.validatePasswordToken(entered)) {
+                item.showFailure("Authentication failed")
+                return
+            }
+            root.authDialogItem = null
+            PopupUtils.close(item)
+            Controller.startHelper(entered)
+        }
+    }
+
     Component {
         id: authDialog
 
@@ -27,15 +62,24 @@ MainView {
             title: "Authentication required"
             text: "Enter passcode or passphrase:"
 
-            function submit() {
+            function takePassword() {
                 var entered = passwordField.text
                 passwordField.text = ""
-                if (!pam.validatePasswordToken(entered)) {
-                    failure.text = "Authentication failed"
-                    return
-                }
-                PopupUtils.close(dialog)
-                Controller.startHelper(entered)
+                return entered
+            }
+
+            function clearSecret() {
+                passwordField.text = ""
+            }
+
+            function showFailure(message) {
+                failure.text = message
+            }
+
+            function schedule(next) {
+                root.authDialogItem = dialog
+                authAction.action = next
+                authAction.start()
             }
 
             TextField {
@@ -43,7 +87,7 @@ MainView {
                 placeholderText: "passcode or passphrase"
                 echoMode: TextInput.Password
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhSensitiveData
-                onAccepted: dialog.submit()
+                onAccepted: dialog.schedule("submit")
             }
 
             Label {
@@ -56,15 +100,12 @@ MainView {
             Button {
                 text: "Authenticate"
                 color: theme.palette.normal.positive
-                onClicked: dialog.submit()
+                onClicked: dialog.schedule("submit")
             }
 
             Button {
                 text: "Cancel"
-                onClicked: {
-                    passwordField.text = ""
-                    PopupUtils.close(dialog)
-                }
+                onClicked: dialog.schedule("cancel")
             }
 
             Component.onCompleted: passwordField.forceActiveFocus()
@@ -87,6 +128,11 @@ MainView {
                 title: "Rayut"
 
                 trailingActionBar.actions: [
+                    Action {
+                        iconName: "note"
+                        text: "节点"
+                        onTriggered: stack.push(nodePage)
+                    },
                     Action {
                         iconName: "note"
                         text: "订阅"
@@ -120,23 +166,21 @@ MainView {
 
             Button {
                 Layout.fillWidth: true
-                visible: !Controller.helperRunning
-                text: "连接"
-                onClicked: PopupUtils.open(authDialog, root)
+                text: "总开关"
+                onClicked: {
+                    if (!Controller.helperRunning) {
+                        PopupUtils.open(authDialog, root)
+                    } else {
+                        Controller.toggleProxy()
+                    }
+                }
             }
 
-            Button {
+            Label {
                 Layout.fillWidth: true
-                visible: Controller.helperRunning && !Controller.tunRunning
-                text: "打开"
-                onClicked: Controller.enableTun()
-            }
-
-            Button {
-                Layout.fillWidth: true
-                visible: Controller.tunRunning
-                text: "关闭"
-                onClicked: Controller.disableTun()
+                wrapMode: Text.Wrap
+                color: theme.palette.normal.backgroundText
+                text: Controller.versionText
             }
 
             Label {
@@ -154,16 +198,159 @@ MainView {
     }
 
     Component {
+        id: nodePage
+
+        Page {
+            id: nodePageRoot
+            property string selectedGroup: ""
+            property var currentGroup: {
+                var groups = Controller.proxyGroups
+                if (!groups || groups.length === 0)
+                    return null
+                for (var i = 0; i < groups.length; i++) {
+                    if (groups[i].name === selectedGroup)
+                        return groups[i]
+                }
+                return groups[0]
+            }
+
+            header: PageHeader {
+                id: nodeHeader
+                title: "节点"
+            }
+
+            Timer {
+                id: nodeAction
+                interval: 1
+                property string kind: ""
+                property string groupName: ""
+                property string nodeName: ""
+                onTriggered: {
+                    if (kind === "delay")
+                        Controller.testDelay(nodeName)
+                    else if (kind === "select")
+                        Controller.selectProxy(groupName, nodeName)
+                }
+            }
+
+            Flickable {
+                id: nodeFlick
+                anchors {
+                    top: nodeHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                contentHeight: nodeColumn.height + units.gu(4)
+                clip: true
+
+                Column {
+                    id: nodeColumn
+                    width: nodeFlick.width - units.gu(4)
+                    x: units.gu(2)
+                    y: units.gu(2)
+                    spacing: units.gu(1)
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        text: Controller.proxyGroups.length === 0 ? "没有可显示的组。请先打开代理。" : ""
+                        visible: text !== ""
+                    }
+
+                    Repeater {
+                        model: Controller.proxyGroups
+                        delegate: Button {
+                            width: nodeColumn.width
+                            text: modelData.name
+                            color: nodePageRoot.currentGroup && modelData.name === nodePageRoot.currentGroup.name ? theme.palette.normal.positive : theme.palette.normal.base
+                            onClicked: nodePageRoot.selectedGroup = modelData.name
+                        }
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        visible: nodePageRoot.currentGroup !== null
+                        text: nodePageRoot.currentGroup ? ("当前：" + nodePageRoot.currentGroup.now) : ""
+                    }
+
+                    Repeater {
+                        model: nodePageRoot.currentGroup ? nodePageRoot.currentGroup.nodes : []
+                        delegate: Row {
+                            width: nodeColumn.width
+                            spacing: units.gu(1)
+
+                            Label {
+                                width: parent.width * 0.42
+                                wrapMode: Text.Wrap
+                                text: (modelData.selected ? "当前 " : "") + modelData.name
+                            }
+
+                            Label {
+                                width: units.gu(8)
+                                text: modelData.delayText
+                            }
+
+                            Button {
+                                visible: nodePageRoot.currentGroup && nodePageRoot.currentGroup.selectable && !modelData.selected
+                                text: "选择"
+                                onClicked: {
+                                    nodePageRoot.selectedGroup = nodePageRoot.currentGroup.name
+                                    nodeAction.kind = "select"
+                                    nodeAction.groupName = nodePageRoot.currentGroup.name
+                                    nodeAction.nodeName = modelData.name
+                                    nodeAction.start()
+                                }
+                            }
+
+                            Button {
+                                text: "延迟"
+                                onClicked: {
+                                    nodeAction.kind = "delay"
+                                    nodeAction.nodeName = modelData.name
+                                    nodeAction.start()
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        width: parent.width
+                        text: "刷新"
+                        onClicked: Controller.refreshGroups()
+                    }
+
+                    Label {
+                        width: parent.width
+                        wrapMode: Text.Wrap
+                        color: theme.palette.normal.backgroundText
+                        text: Controller.message
+                    }
+                }
+            }
+
+            Component.onCompleted: Controller.refreshGroups()
+        }
+    }
+
+    Component {
         id: profilePage
 
         Page {
             header: PageHeader {
+                id: profileHeader
                 title: "订阅"
             }
 
             Flickable {
                 id: flick
-                anchors.fill: parent
+                anchors {
+                    top: profileHeader.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
                 contentHeight: profileColumn.implicitHeight + units.gu(4)
                 clip: true
 

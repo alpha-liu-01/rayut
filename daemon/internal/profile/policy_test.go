@@ -53,6 +53,21 @@ func TestPrepareWrapsProxyList(t *testing.T) {
 	}
 }
 
+func TestPrepareKeepsProxyGroups(t *testing.T) {
+	raw := "proxies:\n- name: a\n  type: socks5\n  server: 127.0.0.1\n  port: 1\nproxy-groups:\n- name: 日本\n  type: select\n  proxies: [a]\n- name: 自动\n  type: url-test\n  proxies: [a]\nrules:\n- MATCH,日本\n"
+	doc, err := prepare(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(doc.YAML)
+	if !strings.Contains(text, "日本") || !strings.Contains(text, "自动") || strings.Contains(text, "name: Rayut") {
+		t.Fatalf("groups were flattened: %s", text)
+	}
+	if !strings.Contains(text, "unified-delay: true") {
+		t.Fatalf("unified delay missing: %s", text)
+	}
+}
+
 func TestPrepareKeepsShareLinkPayload(t *testing.T) {
 	link := "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:443?encryption=none#lab\n"
 	doc, err := prepare(link)

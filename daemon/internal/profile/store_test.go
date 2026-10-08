@@ -165,3 +165,35 @@ func TestRefreshTimeoutKeepsActive(t *testing.T) {
 		t.Fatalf("active changed: %s", got)
 	}
 }
+
+func TestDownloadSendsClashUserAgentAndKeepsGroups(t *testing.T) {
+	var got string
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+		_, _ = w.Write([]byte("proxies:\n- {name: a, type: socks5, server: 127.0.0.1, port: 1}\nproxy-groups:\n- {name: 手动, type: select, proxies: [a]}\n- {name: 自动, type: url-test, proxies: [a]}\nrules: [MATCH,手动]\n"))
+	}))
+	defer server.Close()
+	dir := t.TempDir()
+	store := &Store{
+		Dir:           dir,
+		AllowLoopback: true,
+		Test:          func(string) error { return nil },
+		Client: &http.Client{
+			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		},
+	}
+	if _, err := store.ImportURL(server.URL); err != nil {
+		t.Fatal(err)
+	}
+	if got != subscriptionUserAgent {
+		t.Fatalf("user agent %q", got)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "candidate.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	if !strings.Contains(text, "手动") || !strings.Contains(text, "自动") || strings.Contains(text, "name: Rayut") {
+		t.Fatalf("candidate flattened groups: %s", text)
+	}
+}

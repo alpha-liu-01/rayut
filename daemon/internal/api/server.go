@@ -18,10 +18,18 @@ import (
 
 const ListenAddr = "127.0.0.1:18771"
 
+// HelperVersion and APIVersion are reported to the client. A mismatch is only
+// a prompt to reconnect; the helper does not stop itself or the core.
+const (
+	HelperVersion = "0.1.9"
+	APIVersion    = "1"
+)
+
 type Server struct {
-	token string
-	mu    sync.Mutex
-	http  *http.Server
+	token  string
+	mu     sync.Mutex
+	http   *http.Server
+	groups groupAPI
 }
 
 func New() (*Server, error) {
@@ -50,6 +58,9 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/profiles/import-url", s.auth(s.importURL))
 	mux.HandleFunc("/v1/profiles/activate", s.auth(s.activateProfile))
 	mux.HandleFunc("/v1/profiles/refresh", s.auth(s.refreshProfile))
+	mux.HandleFunc("/v1/proxy-groups", s.auth(s.proxyGroups))
+	mux.HandleFunc("/v1/proxy-groups/", s.auth(s.proxyGroupSelection))
+	mux.HandleFunc("/v1/proxies/", s.auth(s.proxyDelay))
 	s.http = &http.Server{
 		Addr:              ListenAddr,
 		Handler:           mux,
@@ -168,7 +179,18 @@ func (s *Server) snapshot() map[string]string {
 	if present, err := route.TunPresent(); err == nil && present {
 		tun = "present"
 	}
-	return map[string]string{"mihomo": state, "tun": tun}
+	config := "ok"
+	if _, err := os.Stat(paths.Profile); err != nil {
+		config = "missing"
+	}
+	return map[string]string{
+		"mihomo":        state,
+		"tun":           tun,
+		"config":        config,
+		"helperVersion": HelperVersion,
+		"apiVersion":    APIVersion,
+		"coreVersion":   core.Version(),
+	}
 }
 
 func publishClientToken(token string) error {

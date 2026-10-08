@@ -262,7 +262,12 @@ func (s *Store) download(raw string) ([]byte, string, error) {
 	if client == nil {
 		client = SafeClient(20 * time.Second)
 	}
-	response, err := client.Get(parsed.String())
+	request, err := http.NewRequest(http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return nil, "", errCode("fetch failed")
+	}
+	request.Header.Set("User-Agent", subscriptionUserAgent)
+	response, err := client.Do(request)
 	if err != nil {
 		var coded *codedError
 		if errors.As(err, &coded) {
@@ -283,6 +288,10 @@ func (s *Store) download(raw string) ([]byte, string, error) {
 	}
 	return body, parsed.Hostname(), nil
 }
+
+// subscriptionUserAgent asks the provider for a Clash profile. Without it,
+// many subscriptions return a flat share-link list and the proxy groups disappear.
+const subscriptionUserAgent = "clash-meta/1.19.32"
 
 func SafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{

@@ -211,6 +211,7 @@ func applyBase(root map[string]any) {
 	root["allow-lan"] = false
 	root["bind-address"] = "127.0.0.1"
 	root["find-process-mode"] = "off"
+	root["unified-delay"] = true
 	delete(root, "secret")
 	if value, ok := root["external-controller"]; ok && !loopbackEndpoint(fmt.Sprint(value)) {
 		delete(root, "external-controller")
