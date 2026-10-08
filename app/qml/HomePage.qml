@@ -18,6 +18,8 @@ Page {
     property string filterText: ""
     property string shownSelector: ""
     property int revealNonce: 0
+    property string pendingDeleteName: ""
+    property int pendingDeleteIndex: -1
 
     function byteText(value) {
         var n = Number(value)
@@ -491,40 +493,72 @@ Page {
                         id: actions
                         anchors {
                             right: parent.right
-                            rightMargin: units.gu(1)
+                            rightMargin: units.gu(0.5)
                             verticalCenter: parent.verticalCenter
                         }
-                        spacing: units.gu(0.5)
+                        spacing: 0
 
-                        Button {
-                            width: units.gu(4)
+                        AbstractButton {
+                            width: units.gu(3.5)
                             height: units.gu(4)
-                            text: "测"
+                            Accessible.name: "测延迟"
                             onClicked: homeRoot.queue("delay", modelData.name, modelData.index)
+
+                            Icon {
+                                anchors.centerIn: parent
+                                width: units.gu(2.5)
+                                height: width
+                                name: "timer"
+                            }
                         }
 
-                        Button {
-                            width: units.gu(4)
+                        AbstractButton {
+                            width: units.gu(3.5)
                             height: units.gu(4)
-                            text: "改"
                             visible: modelData.index >= 0
+                            Accessible.name: "编辑"
                             onClicked: homeRoot.editNode(modelData.index)
+
+                            Icon {
+                                anchors.centerIn: parent
+                                width: units.gu(2.5)
+                                height: width
+                                name: "edit"
+                            }
                         }
 
-                        Button {
-                            width: units.gu(4)
+                        AbstractButton {
+                            width: units.gu(3.5)
                             height: units.gu(4)
-                            text: "享"
                             visible: modelData.shareable
+                            Accessible.name: "分享"
                             onClicked: homeRoot.queue("share", modelData.name, modelData.index)
+
+                            Icon {
+                                anchors.centerIn: parent
+                                width: units.gu(2.5)
+                                height: width
+                                name: "share"
+                            }
                         }
 
-                        Button {
-                            width: units.gu(4)
+                        AbstractButton {
+                            width: units.gu(3.5)
                             height: units.gu(4)
-                            text: "删"
                             visible: modelData.index >= 0
-                            onClicked: homeRoot.queue("delete", modelData.name, modelData.index)
+                            Accessible.name: "删除"
+                            onClicked: {
+                                homeRoot.pendingDeleteName = modelData.name
+                                homeRoot.pendingDeleteIndex = modelData.index
+                                PopupUtils.open(deleteNodeDialog, homeRoot.header)
+                            }
+
+                            Icon {
+                                anchors.centerIn: parent
+                                width: units.gu(2.5)
+                                height: width
+                                name: "delete"
+                            }
                         }
                     }
 
@@ -751,46 +785,57 @@ Page {
         ActionSelectionPopover {
             actions: ActionList {
                 Action {
+                    iconName: "edit-paste"
                     text: "剪贴板"
                     onTriggered: homeRoot.queue("clip")
                 }
                 Action {
+                    iconName: "stock_image"
                     text: "相册二维码"
                     onTriggered: homeRoot.scanAlbum()
                 }
                 Action {
+                    iconName: "camera-symbolic"
                     text: "相机二维码"
                     onTriggered: homeRoot.scanCamera()
                 }
                 Action {
+                    iconName: "insert-link"
                     text: "订阅链接"
                     onTriggered: PopupUtils.open(urlDialog, homeRoot.header)
                 }
                 Action {
+                    iconName: "stock_document"
                     text: "本地 YAML"
                     onTriggered: PopupUtils.open(yamlDialog, homeRoot.header)
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "Shadowsocks"
                     onTriggered: homeRoot.queue("scheme", "ss")
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "VMess"
                     onTriggered: homeRoot.queue("scheme", "vmess")
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "VLESS"
                     onTriggered: homeRoot.queue("scheme", "vless")
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "Trojan"
                     onTriggered: homeRoot.queue("scheme", "trojan")
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "Hysteria2"
                     onTriggered: homeRoot.queue("scheme", "hysteria2")
                 }
                 Action {
+                    iconName: "stock_key"
                     text: "TUIC"
                     onTriggered: homeRoot.queue("scheme", "tuic")
                 }
@@ -804,26 +849,31 @@ Page {
         ActionSelectionPopover {
             actions: ActionList {
                 Action {
+                    iconName: "view-refresh"
                     text: "重启代理"
                     enabled: Controller.helperRunning && !Controller.versionMismatch
                     onTriggered: homeRoot.queue("restart")
                 }
                 Action {
+                    iconName: "delete"
                     text: "删除当前组里的节点"
                     enabled: Controller.viewedGroup !== ""
                     onTriggered: PopupUtils.open(clearDialog, homeRoot.header)
                 }
                 Action {
+                    iconName: "share"
                     text: "导出分享链接"
                     enabled: Controller.viewedGroup !== ""
                     onTriggered: homeRoot.queue("export")
                 }
                 Action {
+                    iconName: "timer"
                     text: "测试当前组延迟"
                     enabled: Controller.helperRunning && Controller.viewedGroup !== ""
                     onTriggered: homeRoot.queue("testall")
                 }
                 Action {
+                    iconName: "sync"
                     text: "刷新当前订阅"
                     enabled: Controller.groupKind === "subscription"
                     onTriggered: homeRoot.queue("refresh")
@@ -897,6 +947,30 @@ Page {
                     yamlField.text = ""
                     PopupUtils.close(yamlBox)
                 }
+            }
+        }
+    }
+
+    Component {
+        id: deleteNodeDialog
+
+        Dialog {
+            id: deleteNodeBox
+            title: "删除这个节点？"
+            text: homeRoot.pendingDeleteName
+
+            Button {
+                text: "删除"
+                color: theme.palette.normal.negative
+                onClicked: {
+                    PopupUtils.close(deleteNodeBox)
+                    homeRoot.queue("delete", homeRoot.pendingDeleteName, homeRoot.pendingDeleteIndex)
+                }
+            }
+
+            Button {
+                text: "取消"
+                onClicked: PopupUtils.close(deleteNodeBox)
             }
         }
     }

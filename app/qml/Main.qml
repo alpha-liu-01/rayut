@@ -235,143 +235,6 @@ MainView {
     }
 
     Component {
-        id: nodePage
-
-        Page {
-            id: nodePageRoot
-            property string selectedGroup: ""
-            property var currentGroup: {
-                var groups = Controller.proxyGroups
-                if (!groups || groups.length === 0)
-                    return null
-                for (var i = 0; i < groups.length; i++) {
-                    if (groups[i].name === selectedGroup)
-                        return groups[i]
-                }
-                return groups[0]
-            }
-
-            header: PageHeader {
-                id: nodeHeader
-                title: "节点"
-            }
-
-            Timer {
-                id: nodeAction
-                interval: 1
-                property string kind: ""
-                property string groupName: ""
-                property string nodeName: ""
-                onTriggered: {
-                    if (kind === "delay")
-                        Controller.testDelay(nodeName)
-                    else if (kind === "select")
-                        Controller.selectProxy(groupName, nodeName)
-                }
-            }
-
-            Flickable {
-                id: nodeFlick
-                anchors {
-                    top: nodeHeader.bottom
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
-                }
-                contentHeight: nodeColumn.height + units.gu(4)
-                clip: true
-
-                Column {
-                    id: nodeColumn
-                    width: nodeFlick.width - units.gu(4)
-                    x: units.gu(2)
-                    y: units.gu(2)
-                    spacing: units.gu(1)
-
-                    Label {
-                        width: parent.width
-                        wrapMode: Text.Wrap
-                        text: Controller.proxyGroups.length === 0 ? "没有可显示的组。请先打开代理。" : ""
-                        visible: text !== ""
-                    }
-
-                    Repeater {
-                        model: Controller.proxyGroups
-                        delegate: Button {
-                            width: nodeColumn.width
-                            text: modelData.name
-                            color: nodePageRoot.currentGroup && modelData.name === nodePageRoot.currentGroup.name ? theme.palette.normal.positive : theme.palette.normal.base
-                            onClicked: nodePageRoot.selectedGroup = modelData.name
-                        }
-                    }
-
-                    Label {
-                        width: parent.width
-                        wrapMode: Text.Wrap
-                        visible: nodePageRoot.currentGroup !== null
-                        text: nodePageRoot.currentGroup ? ("当前：" + nodePageRoot.currentGroup.now) : ""
-                    }
-
-                    Repeater {
-                        model: nodePageRoot.currentGroup ? nodePageRoot.currentGroup.nodes : []
-                        delegate: Row {
-                            width: nodeColumn.width
-                            spacing: units.gu(1)
-
-                            Label {
-                                width: parent.width * 0.42
-                                wrapMode: Text.Wrap
-                                text: (modelData.selected ? "当前 " : "") + modelData.name
-                            }
-
-                            Label {
-                                width: units.gu(8)
-                                text: modelData.delayText
-                            }
-
-                            Button {
-                                visible: nodePageRoot.currentGroup && nodePageRoot.currentGroup.selectable && !modelData.selected
-                                text: "选择"
-                                onClicked: {
-                                    nodePageRoot.selectedGroup = nodePageRoot.currentGroup.name
-                                    nodeAction.kind = "select"
-                                    nodeAction.groupName = nodePageRoot.currentGroup.name
-                                    nodeAction.nodeName = modelData.name
-                                    nodeAction.start()
-                                }
-                            }
-
-                            Button {
-                                text: "延迟"
-                                onClicked: {
-                                    nodeAction.kind = "delay"
-                                    nodeAction.nodeName = modelData.name
-                                    nodeAction.start()
-                                }
-                            }
-                        }
-                    }
-
-                    Button {
-                        width: parent.width
-                        text: "刷新"
-                        onClicked: Controller.refreshGroups()
-                    }
-
-                    Label {
-                        width: parent.width
-                        wrapMode: Text.Wrap
-                        color: theme.palette.normal.backgroundText
-                        text: Controller.message
-                    }
-                }
-            }
-
-            Component.onCompleted: Controller.refreshGroups()
-        }
-    }
-
-    Component {
         id: corePage
 
         CorePage {}
@@ -1118,57 +981,44 @@ MainView {
                     text: "热点和 USB 共享出去的设备不走代理。要登录 Wi-Fi 门户时，先关闭代理。"
                 }
 
-                Button {
-                    width: parent.width
-                    text: "核心"
-                    onClicked: {
-                        drawerNav.page = "core"
-                        drawerNav.start()
-                    }
+                ListModel {
+                    id: drawerPages
+                    ListElement { iconName: "stock_application"; label: "核心"; page: "core" }
+                    ListElement { iconName: "view-list-symbolic"; label: "订阅分组"; page: "groups" }
+                    ListElement { iconName: "note"; label: "规则模板"; page: "rules" }
+                    ListElement { iconName: "edit"; label: "配置编辑"; page: "editor" }
+                    ListElement { iconName: "stock_document"; label: "日志和当前连接"; page: "session" }
+                    ListElement { iconName: "info"; label: "关于"; page: "about" }
                 }
 
-                Button {
-                    width: parent.width
-                    text: "订阅分组"
-                    onClicked: {
-                        drawerNav.page = "groups"
-                        drawerNav.start()
-                    }
-                }
+                Repeater {
+                    model: drawerPages
 
-                Button {
-                    width: parent.width
-                    text: "规则模板"
-                    onClicked: {
-                        drawerNav.page = "rules"
-                        drawerNav.start()
-                    }
-                }
+                    delegate: AbstractButton {
+                        width: parent.width
+                        height: units.gu(5)
+                        onClicked: {
+                            drawerNav.page = page
+                            drawerNav.start()
+                        }
 
-                Button {
-                    width: parent.width
-                    text: "配置编辑"
-                    onClicked: {
-                        drawerNav.page = "editor"
-                        drawerNav.start()
-                    }
-                }
+                        Row {
+                            anchors.fill: parent
+                            spacing: units.gu(2)
 
-                Button {
-                    width: parent.width
-                    text: "日志和当前连接"
-                    onClicked: {
-                        drawerNav.page = "session"
-                        drawerNav.start()
-                    }
-                }
+                            Icon {
+                                name: iconName
+                                width: units.gu(3)
+                                height: width
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: theme.palette.normal.foregroundText
+                            }
 
-                Button {
-                    width: parent.width
-                    text: "关于"
-                    onClicked: {
-                        drawerNav.page = "about"
-                        drawerNav.start()
+                            Label {
+                                text: label
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
                     }
                 }
             }
