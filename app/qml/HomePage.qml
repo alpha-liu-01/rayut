@@ -1,4 +1,5 @@
 import QtQuick 2.7
+import QtQuick.Window 2.2
 import Lomiri.Components 1.3
 import Lomiri.Components.Popups 1.3
 import QtQuick.Layouts 1.3
@@ -577,122 +578,169 @@ Page {
             }
 
             Column {
-            id: bottomColumn
-            width: parent.width
-            spacing: units.gu(1)
-
-            Item {
+                id: bottomColumn
                 width: parent.width
-                height: units.gu(1)
-            }
+                spacing: units.gu(1)
 
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: Controller.summary
-            }
-
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                color: theme.palette.normal.backgroundText
-                text: Controller.versionText
-            }
-
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                visible: Controller.message !== ""
-                text: Controller.message
-            }
-
-            Button {
-                width: parent.width
-                visible: !Controller.networkBlocked
-                text: "总开关"
-                onClicked: {
-                    if (!Controller.helperRunning)
-                        homeRoot.openAuth()
-                    else
-                        Controller.toggleProxy()
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    visible: Controller.message !== ""
+                    color: theme.palette.normal.backgroundText
+                    text: Controller.message
                 }
-            }
 
-            Button {
-                width: parent.width
-                visible: Controller.networkBlocked
-                text: "关闭"
-                onClicked: Controller.disableTun()
-            }
+                Item {
+                    width: parent.width
+                    height: units.gu(8)
 
-            Button {
-                width: parent.width
-                visible: Controller.networkBlocked
-                text: "重连"
-                onClicked: Controller.enableTun()
-            }
+                    Row {
+                        anchors {
+                            left: parent.left
+                            right: powerButton.left
+                            top: parent.top
+                            bottom: parent.bottom
+                            rightMargin: units.gu(1)
+                        }
+                        spacing: units.gu(1)
 
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: "本次会话  上传 " + homeRoot.byteText(Controller.sessionUpload) + "  下载 " + homeRoot.byteText(Controller.sessionDownload)
-            }
+                        Column {
+                            width: units.gu(12)
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: units.gu(0.4)
 
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                text: "累计  上传 " + homeRoot.byteText(Controller.totalUpload) + "  下载 " + homeRoot.byteText(Controller.totalDownload)
-            }
-
-            Label {
-                width: parent.width
-                wrapMode: Text.Wrap
-                color: theme.palette.normal.backgroundText
-                text: "速率  上传 " + homeRoot.byteText(Controller.uploadRate) + "/s  下载 " + homeRoot.byteText(Controller.downloadRate) + "/s"
-            }
-
-            Item {
-                id: trafficChart
-                width: parent.width
-                height: units.gu(6)
-                visible: Controller.trafficSamples.length > 0
-
-                Row {
-                    anchors.fill: parent
-                    spacing: 1
-
-                    Repeater {
-                        model: Controller.trafficSamples
-
-                        Item {
-                            width: Math.max(1, (trafficChart.width - Math.max(0, Controller.trafficSamples.length - 1)) / Math.max(1, Controller.trafficSamples.length))
-                            height: trafficChart.height
-
-                            Rectangle {
+                            Label {
                                 width: parent.width
-                                height: parent.height * Number(modelData.down) / homeRoot.trafficMax()
-                                anchors.bottom: parent.bottom
-                                color: theme.palette.normal.positive
+                                elide: Text.ElideRight
+                                text: Controller.summary
                             }
 
-                            Rectangle {
+                            Label {
                                 width: parent.width
-                                height: parent.height * Number(modelData.up) / homeRoot.trafficMax()
-                                anchors.bottom: parent.bottom
-                                anchors.bottomMargin: parent.height * Number(modelData.down) / homeRoot.trafficMax()
-                                color: theme.palette.normal.activity
+                                elide: Text.ElideRight
+                                color: theme.palette.normal.backgroundText
+                                text: "↑ " + homeRoot.byteText(Controller.uploadRate) + "/s"
+                            }
+
+                            Label {
+                                width: parent.width
+                                elide: Text.ElideRight
+                                color: theme.palette.normal.positive
+                                text: "↓ " + homeRoot.byteText(Controller.downloadRate) + "/s"
+                            }
+                        }
+
+                        Item {
+                            id: trafficChart
+                            width: parent.width - units.gu(13)
+                            height: units.gu(4)
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            Row {
+                                anchors.fill: parent
+                                spacing: 1
+
+                                Repeater {
+                                    model: Controller.trafficSamples
+
+                                    Item {
+                                        width: Math.max(1, (trafficChart.width - Math.max(0, Controller.trafficSamples.length - 1)) / Math.max(1, Controller.trafficSamples.length))
+                                        height: trafficChart.height
+
+                                        Rectangle {
+                                            width: parent.width
+                                            height: parent.height * Number(modelData.down) / homeRoot.trafficMax()
+                                            anchors.bottom: parent.bottom
+                                            color: theme.palette.normal.positive
+                                        }
+
+                                        Rectangle {
+                                            width: parent.width
+                                            height: parent.height * Number(modelData.up) / homeRoot.trafficMax()
+                                            anchors.bottom: parent.bottom
+                                            anchors.bottomMargin: parent.height * Number(modelData.down) / homeRoot.trafficMax()
+                                            color: theme.palette.normal.activity
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    AbstractButton {
+                        id: powerButton
+                        width: units.gu(7)
+                        height: units.gu(7)
+                        visible: !Controller.networkBlocked
+                        anchors {
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            verticalCenterOffset: -units.gu(2)
+                        }
+                        Accessible.name: "总开关"
+
+                        onClicked: {
+                            if (!Controller.helperRunning)
+                                homeRoot.openAuth()
+                            else
+                                Controller.toggleProxy()
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: width / 2
+                            color: Controller.tunRunning ? "#3a7ca5" : theme.palette.normal.base
+                        }
+
+                        Canvas {
+                            anchors.centerIn: parent
+                            width: parent.width * 0.46
+                            height: parent.height * 0.46
+                            antialiasing: true
+                            canvasSize: Qt.size(width * Screen.devicePixelRatio, height * Screen.devicePixelRatio)
+
+                            onWidthChanged: requestPaint()
+                            onHeightChanged: requestPaint()
+                            onCanvasSizeChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                var ratio = Screen.devicePixelRatio
+                                ctx.scale(ratio, ratio)
+                                ctx.scale(width / 24, height / 24)
+                                ctx.fillStyle = "#ffffff"
+                                ctx.beginPath()
+                                ctx.moveTo(2.01, 21)
+                                ctx.lineTo(23, 12)
+                                ctx.lineTo(2.01, 3)
+                                ctx.lineTo(2, 10)
+                                ctx.lineTo(17, 12)
+                                ctx.lineTo(2, 14)
+                                ctx.closePath()
+                                ctx.fill()
                             }
                         }
                     }
                 }
-            }
 
-            Label {
-                width: parent.width
-                visible: Controller.trafficSamples.length > 0
-                color: theme.palette.normal.backgroundText
-                text: "绿为下载，活动色为上传"
-            }
+                Row {
+                    width: parent.width
+                    spacing: units.gu(1)
+                    visible: Controller.networkBlocked
+
+                    Button {
+                        width: (parent.width - parent.spacing) / 2
+                        text: "关闭"
+                        onClicked: Controller.disableTun()
+                    }
+
+                    Button {
+                        width: (parent.width - parent.spacing) / 2
+                        text: "重连"
+                        onClicked: Controller.enableTun()
+                    }
+                }
             }
         }
     }

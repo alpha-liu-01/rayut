@@ -400,6 +400,12 @@ MainView {
                     wrapMode: Text.Wrap
                     text: Controller.versionText
                 }
+
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    text: "连到本机热点的设备不经过代理。通过 USB 使用本机网络的电脑不经过代理。代理开着时，需要网页登录的 Wi-Fi 门户可能打不开。"
+                }
             }
         }
     }
@@ -1103,6 +1109,13 @@ MainView {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
+                }
+
+                Label {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: theme.palette.normal.backgroundText
+                    text: "热点和 USB 共享出去的设备不走代理。要登录 Wi-Fi 门户时，先关闭代理。"
                 }
 
                 Button {

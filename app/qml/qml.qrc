@@ -4,5 +4,7 @@
         <file>HomePage.qml</file>
         <file>GroupsPage.qml</file>
         <file>CorePage.qml</file>
+        <file alias="logo.svg">../assets/logo.svg</file>
+        <file alias="plane.svg">../assets/plane.svg</file>
     </qresource>
 </RCC>
