@@ -24,10 +24,11 @@ type Store struct {
 }
 
 type View struct {
-	Current   Item   `json:"current"`
-	Candidate Item   `json:"candidate"`
-	LastGood  bool   `json:"lastGood"`
-	Error     string `json:"error"`
+	Current      Item   `json:"current"`
+	Candidate    Item   `json:"candidate"`
+	LastGood     bool   `json:"lastGood"`
+	Error        string `json:"error"`
+	RuleTemplate string `json:"ruleTemplate"`
 }
 
 type Item struct {
@@ -46,6 +47,7 @@ type stateFile struct {
 	CandidateHost  string `json:"candidateHost"`
 	CandidateState string `json:"candidateState"`
 	Error          string `json:"error"`
+	RuleTemplate   string `json:"ruleTemplate"`
 }
 
 func (s *Store) View() View {
@@ -76,8 +78,9 @@ func (s *Store) View() View {
 			Host:  state.CandidateHost,
 			State: candidateState,
 		},
-		LastGood: fileExists(s.lastGoodPath()),
-		Error:    state.Error,
+		LastGood:     fileExists(s.lastGoodPath()),
+		Error:        state.Error,
+		RuleTemplate: state.RuleTemplate,
 	}
 }
 
@@ -162,6 +165,7 @@ func (s *Store) Activate() (View, error) {
 		state.CurrentKind = "local"
 	}
 	state.Error = ""
+	state.RuleTemplate = ""
 	if state.CurrentKind != "subscription" {
 		_ = os.Remove(s.urlPath())
 	}

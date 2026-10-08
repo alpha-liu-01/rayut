@@ -80,6 +80,23 @@ func (s *Server) activateProfile(w http.ResponseWriter, r *http.Request) {
 	writeProfile(w, view, err)
 }
 
+func (s *Server) applyRuleTemplate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		ID string `json:"id"`
+	}
+	if !decodeProfile(w, r, &body) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	view, err := s.profileStore().ApplyTemplate(body.ID)
+	writeProfile(w, view, err)
+}
+
 func (s *Server) refreshProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method", http.StatusMethodNotAllowed)

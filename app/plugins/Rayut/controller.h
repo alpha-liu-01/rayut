@@ -17,6 +17,7 @@ class Controller : public QObject {
     Q_PROPERTY(QString summary READ summary NOTIFY stateChanged)
     Q_PROPERTY(QString message READ message NOTIFY stateChanged)
     Q_PROPERTY(QString profileText READ profileText NOTIFY stateChanged)
+    Q_PROPERTY(QString ruleTemplate READ ruleTemplate NOTIFY stateChanged)
     Q_PROPERTY(QString versionText READ versionText NOTIFY stateChanged)
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
@@ -31,6 +32,7 @@ public:
     QString summary() const;
     QString message() const;
     QString profileText() const;
+    QString ruleTemplate() const;
     QString versionText() const;
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
@@ -45,6 +47,7 @@ public:
     Q_INVOKABLE void importURL(const QString &url);
     Q_INVOKABLE void activateProfile();
     Q_INVOKABLE void refreshProfile();
+    Q_INVOKABLE void applyRuleTemplate(const QString &id);
     Q_INVOKABLE void refreshGroups();
     Q_INVOKABLE void selectProxy(const QString &group, const QString &name);
     Q_INVOKABLE void testDelay(const QString &name);
@@ -71,6 +74,7 @@ private:
     QString m_token;
     QString m_message;
     QString m_profileText;
+    QString m_ruleTemplate;
     QString m_versionText;
     QString m_configState;
     bool m_helperRunning;

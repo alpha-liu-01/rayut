@@ -538,6 +538,13 @@ MainView {
                 title: "订阅"
             }
 
+            Timer {
+                id: templateAction
+                interval: 1
+                property string templateId: ""
+                onTriggered: Controller.applyRuleTemplate(templateId)
+            }
+
             Flickable {
                 id: flick
                 anchors {
@@ -560,6 +567,39 @@ MainView {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         text: Controller.helperRunning ? Controller.profileText : "请先在首页连接"
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "全局代理"
+                        enabled: Controller.helperRunning
+                        color: Controller.ruleTemplate === "global" ? theme.palette.normal.positive : theme.palette.normal.base
+                        onClicked: {
+                            templateAction.templateId = "global"
+                            templateAction.start()
+                        }
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "绕过局域网"
+                        enabled: Controller.helperRunning
+                        color: Controller.ruleTemplate === "lan" ? theme.palette.normal.positive : theme.palette.normal.base
+                        onClicked: {
+                            templateAction.templateId = "lan"
+                            templateAction.start()
+                        }
+                    }
+
+                    Button {
+                        Layout.fillWidth: true
+                        text: "绕过局域网和中国大陆"
+                        enabled: Controller.helperRunning
+                        color: Controller.ruleTemplate === "lan-china" ? theme.palette.normal.positive : theme.palette.normal.base
+                        onClicked: {
+                            templateAction.templateId = "lan-china"
+                            templateAction.start()
+                        }
                     }
 
                     TextField {

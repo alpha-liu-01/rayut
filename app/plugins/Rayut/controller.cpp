@@ -25,7 +25,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.12";
+const char kAppVersion[] = "0.1.13";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -37,6 +37,20 @@ QString tokenPath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     return QDir(dir).filePath(QStringLiteral("client-token"));
+}
+
+QString ruleTemplateLabel(const QString &id)
+{
+    if (id == QLatin1String("global")) {
+        return QStringLiteral("全局代理");
+    }
+    if (id == QLatin1String("lan")) {
+        return QStringLiteral("绕过局域网");
+    }
+    if (id == QLatin1String("lan-china")) {
+        return QStringLiteral("绕过局域网和中国大陆");
+    }
+    return QStringLiteral("配置自带");
 }
 }
 
@@ -93,6 +107,11 @@ QString Controller::message() const
 QString Controller::profileText() const
 {
     return m_profileText;
+}
+
+QString Controller::ruleTemplate() const
+{
+    return m_ruleTemplate;
 }
 
 QVariantList Controller::proxyGroups() const
@@ -157,7 +176,7 @@ void Controller::refresh()
 {
     QByteArray body;
     if (!request(QStringLiteral("GET"), QStringLiteral("/v1/status"), QByteArray(), &body, 30000)) {
-        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || !m_profileText.isEmpty() || !m_versionText.isEmpty();
+        const bool changed = m_helperRunning || m_tunRunning || m_coreRunning || m_versionMismatch || m_configBroken || !m_profileText.isEmpty() || !m_versionText.isEmpty() || !m_ruleTemplate.isEmpty();
         m_helperRunning = false;
         m_tunRunning = false;
         m_coreRunning = false;
@@ -165,6 +184,7 @@ void Controller::refresh()
         m_versionMismatch = false;
         m_configState = QStringLiteral("ok");
         m_profileText.clear();
+        m_ruleTemplate.clear();
         m_versionText.clear();
         if (changed) {
             queueStateChanged();
@@ -361,6 +381,13 @@ void Controller::refreshProfile()
     postProfile(QStringLiteral("/v1/profiles/refresh"), QByteArray(), QStringLiteral("已校验，当前配置未替换"));
 }
 
+void Controller::applyRuleTemplate(const QString &id)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("id"), id);
+    postProfile(QStringLiteral("/v1/rule-templates"), QJsonDocument(object).toJson(QJsonDocument::Compact), QStringLiteral("已切换规则"));
+}
+
 void Controller::refreshGroups()
 {
     QByteArray body;
@@ -532,6 +559,9 @@ QString Controller::messageFor(const QString &code) const
     if (code == QLatin1String("no candidate")) {
         return QStringLiteral("没有可激活的配置");
     }
+    if (code == QLatin1String("unknown template")) {
+        return QStringLiteral("没有这套规则");
+    }
     if (code == QLatin1String("core not running")) {
         return QStringLiteral("核心未运行");
     }
@@ -678,9 +708,12 @@ void Controller::applyProfile(const QByteArray &body)
     } else if (candidateState == QLatin1String("failed")) {
         text += QStringLiteral("\n校验失败，当前配置未替换");
     }
-    if (m_profileText == text) {
+    const QString ruleTemplate = object.value(QStringLiteral("ruleTemplate")).toString();
+    text += QStringLiteral("\n规则：") + ruleTemplateLabel(ruleTemplate);
+    if (m_profileText == text && m_ruleTemplate == ruleTemplate) {
         return;
     }
     m_profileText = text;
+    m_ruleTemplate = ruleTemplate;
     queueStateChanged();
 }
