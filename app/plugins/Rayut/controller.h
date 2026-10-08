@@ -50,6 +50,10 @@ class Controller : public QObject {
     Q_PROPERTY(QString profileText READ profileText NOTIFY stateChanged)
     Q_PROPERTY(QString ruleTemplate READ ruleTemplate NOTIFY stateChanged)
     Q_PROPERTY(QString versionText READ versionText NOTIFY stateChanged)
+    Q_PROPERTY(QVariantList coreReleases READ coreReleases NOTIFY stateChanged)
+    Q_PROPERTY(QString corePlace READ corePlace NOTIFY stateChanged)
+    Q_PROPERTY(QString coreTag READ coreTag NOTIFY stateChanged)
+    Q_PROPERTY(bool coreBusy READ coreBusy NOTIFY stateChanged)
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
@@ -91,6 +95,10 @@ public:
     QString profileText() const;
     QString ruleTemplate() const;
     QString versionText() const;
+    QVariantList coreReleases() const;
+    QString corePlace() const;
+    QString coreTag() const;
+    bool coreBusy() const;
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
     QVariantList sessionConnections() const;
@@ -124,6 +132,8 @@ public:
     Q_INVOKABLE void toggleProxy();
     Q_INVOKABLE void setKillSwitch(bool on);
     Q_INVOKABLE void setAllowLan(bool on);
+    Q_INVOKABLE void refreshCores();
+    Q_INVOKABLE void installCore(const QString &tag, bool disconnectFirst);
     Q_INVOKABLE void refreshStatus();
     Q_INVOKABLE void importContent(const QString &content);
     Q_INVOKABLE void importURL(const QString &url);
@@ -174,6 +184,7 @@ private:
     void setMessage(const QString &message);
     void queueStateChanged();
     void applyStatus(const QByteArray &body);
+    void applyCoreCatalog(const QByteArray &body);
     void applyProfile(const QByteArray &body);
     void applyGroups(const QByteArray &body);
     void applyLogs(const QByteArray &body);
@@ -199,6 +210,11 @@ private:
     QString m_profileText;
     QString m_ruleTemplate;
     QString m_versionText;
+    QVariantList m_coreReleases;
+    QString m_corePlace;
+    QString m_coreTag;
+    QByteArray m_coreInstallBody;
+    bool m_coreBusy;
     QString m_configState;
     bool m_helperRunning;
     bool m_tunRunning;

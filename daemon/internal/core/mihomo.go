@@ -15,10 +15,14 @@ import (
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
+	"github.com/alpha-liu-01/rayut/daemon/internal/route"
 )
 
 var (
-	versionOnce sync.Once
+	versionMu   sync.Mutex
+	versionPath string
+	versionTime time.Time
+	versionSize int64
 	versionText = "unknown"
 	stopping    atomic.Bool
 )
@@ -32,27 +36,52 @@ func EndStop() { stopping.Store(false) }
 // Stopping reports whether Stop is in progress.
 func Stopping() bool { return stopping.Load() }
 
-// Version runs `mihomo -v` once and returns the version token.
+// Executable is the data-directory core when that file is a regular non-empty
+// binary, and the packaged core otherwise. A symlink is never selected.
+func Executable() string {
+	info, err := os.Lstat(paths.CoreFile)
+	if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+		return paths.Mihomo
+	}
+	return paths.CoreFile
+}
+
+// Version runs `mihomo -v` and returns the version token.
+// The result is cached until the selected binary changes.
 // `mihomo version` is not a version flag and must not be used.
 func Version() string {
-	versionOnce.Do(func() {
-		out, err := exec.Command(paths.Mihomo, "-v").CombinedOutput()
-		text := strings.TrimSpace(string(out))
-		if text == "" {
-			if err != nil {
-				versionText = "unknown"
-			}
-			return
-		}
-		for _, field := range strings.Fields(text) {
-			if strings.HasPrefix(field, "v") && strings.Contains(field, ".") {
-				versionText = field
-				return
-			}
-		}
-		versionText = strings.Split(text, "\n")[0]
-	})
+	path := Executable()
+	info, statErr := os.Stat(path)
+	versionMu.Lock()
+	defer versionMu.Unlock()
+	if statErr == nil && versionPath == path && versionSize == info.Size() && versionTime.Equal(info.ModTime()) && versionText != "" {
+		return versionText
+	}
+	out, err := exec.Command(path, "-v").CombinedOutput()
+	text := versionToken(string(out))
+	if text == "" && err != nil {
+		text = "unknown"
+	}
+	if statErr == nil {
+		versionPath = path
+		versionTime = info.ModTime()
+		versionSize = info.Size()
+	}
+	versionText = text
 	return versionText
+}
+
+func versionToken(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return ""
+	}
+	for _, field := range strings.Fields(text) {
+		if strings.HasPrefix(field, "v") && strings.Contains(field, ".") {
+			return field
+		}
+	}
+	return strings.Split(text, "\n")[0]
 }
 
 func pidFile() string { return paths.Runtime + "/mihomo.pid" }
@@ -75,7 +104,7 @@ func Alive() (int, bool) {
 
 // Test checks a config with the fixed mihomo binary and discards its output.
 func Test(configPath string) error {
-	if _, err := os.Stat(paths.Mihomo); err != nil {
+	if _, err := os.Stat(Executable()); err != nil {
 		return fmt.Errorf("core missing")
 	}
 	dir := filepath.Join(paths.Runtime, "check")
@@ -84,7 +113,7 @@ func Test(configPath string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, paths.Mihomo, "-t", "-d", dir, "-f", configPath)
+	cmd := exec.CommandContext(ctx, Executable(), "-t", "-d", dir, "-f", configPath)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	if err := cmd.Run(); err != nil {
@@ -98,7 +127,10 @@ func Start() error {
 	if _, ok := Alive(); ok {
 		return fmt.Errorf("already-running")
 	}
-	if _, err := os.Stat(paths.Mihomo); err != nil {
+	if present, err := route.TunPresent(); err == nil && present {
+		return fmt.Errorf("tun held")
+	}
+	if _, err := os.Stat(Executable()); err != nil {
 		return fmt.Errorf("core missing")
 	}
 	if _, err := os.Stat(paths.Profile); err != nil {
@@ -122,7 +154,7 @@ func Start() error {
 		log.Close()
 		return err
 	}
-	cmd := exec.Command(paths.Mihomo, "-d", paths.Runtime, "-f", configPath)
+	cmd := exec.Command(Executable(), "-d", paths.Runtime, "-f", configPath)
 	cmd.Stdout = log
 	cmd.Stderr = log
 	if err := cmd.Start(); err != nil {

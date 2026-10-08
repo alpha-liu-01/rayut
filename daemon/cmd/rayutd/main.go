@@ -14,6 +14,7 @@ import (
 
 	"github.com/alpha-liu-01/rayut/daemon/internal/api"
 	"github.com/alpha-liu-01/rayut/daemon/internal/cgroup"
+	"github.com/alpha-liu-01/rayut/daemon/internal/core"
 	"github.com/alpha-liu-01/rayut/daemon/internal/killswitch"
 	"github.com/alpha-liu-01/rayut/daemon/internal/paths"
 	"github.com/alpha-liu-01/rayut/daemon/internal/route"
@@ -43,6 +44,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
+	core.ClearInstallTemps()
 	ln, err := net.Listen("tcp", api.ListenAddr)
 	if err != nil {
 		if errors.Is(err, syscall.EADDRINUSE) {

@@ -29,7 +29,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.26";
+const char kAppVersion[] = "0.1.28";
 const char kApiVersion[] = "1";
 
 QString helperPath()
@@ -151,6 +151,7 @@ void EditLineModel::joinLine(int row, int *focusRow, int *focusColumn)
 Controller::Controller(QObject *parent)
     : QObject(parent)
     , m_network(new QNetworkAccessManager(this))
+    , m_coreBusy(false)
     , m_configState(QStringLiteral("ok"))
     , m_helperRunning(false)
     , m_tunRunning(false)
@@ -397,6 +398,26 @@ void Controller::joinEditLine(int row)
     emit editFocusChanged();
 }
 
+QVariantList Controller::coreReleases() const
+{
+    return m_coreReleases;
+}
+
+QString Controller::corePlace() const
+{
+    return m_corePlace;
+}
+
+QString Controller::coreTag() const
+{
+    return m_coreTag;
+}
+
+bool Controller::coreBusy() const
+{
+    return m_coreBusy;
+}
+
 QString Controller::versionText() const
 {
     if (!m_helperRunning) {
@@ -590,6 +611,76 @@ void Controller::setKillSwitch(bool on)
     }
     m_killSwitch = QJsonDocument::fromJson(body).object().value(QStringLiteral("enabled")).toBool();
     queueStateChanged();
+}
+
+void Controller::applyCoreCatalog(const QByteArray &body)
+{
+    const QJsonObject object = QJsonDocument::fromJson(body).object();
+    QVariantList list;
+    const QJsonArray releases = object.value(QStringLiteral("releases")).toArray();
+    for (const QJsonValue &value : releases) {
+        const QJsonObject release = value.toObject();
+        QVariantMap item;
+        item.insert(QStringLiteral("tag"), release.value(QStringLiteral("tag")).toString());
+        item.insert(QStringLiteral("license"), release.value(QStringLiteral("license")).toString());
+        item.insert(QStringLiteral("source"), release.value(QStringLiteral("source")).toString());
+        item.insert(QStringLiteral("installed"), release.value(QStringLiteral("installed")).toBool());
+        list.append(item);
+    }
+    m_coreReleases = list;
+    m_corePlace = object.value(QStringLiteral("place")).toString();
+    m_coreTag = object.value(QStringLiteral("tag")).toString();
+    queueStateChanged();
+}
+
+void Controller::refreshCores()
+{
+    QByteArray body;
+    if (!request(QStringLiteral("GET"), QStringLiteral("/v1/cores"), QByteArray(), &body, 5000)) {
+        return;
+    }
+    applyCoreCatalog(body);
+}
+
+void Controller::installCore(const QString &tag, bool disconnectFirst)
+{
+    if (m_coreBusy) {
+        return;
+    }
+    if (m_versionMismatch) {
+        setMessage(QStringLiteral("版本不一致，请重新连接"));
+        return;
+    }
+    if (disconnectFirst && (m_tunRunning || m_coreRunning)) {
+        setMessage(QStringLiteral("正在断开"));
+        QByteArray body;
+        if (!request(QStringLiteral("POST"), QStringLiteral("/v1/tun/disable"), QByteArray(), &body, 30000)) {
+            return;
+        }
+        applyStatus(body);
+    }
+    if (m_tunRunning || m_coreRunning) {
+        setMessage(QStringLiteral("请先关闭代理"));
+        return;
+    }
+    m_coreBusy = true;
+    setMessage(QStringLiteral("正在校验并安装"));
+    QJsonObject object;
+    object.insert(QStringLiteral("tag"), tag);
+    QByteArray body;
+    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/cores/install"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 180000)) {
+        m_coreBusy = false;
+        queueStateChanged();
+        return;
+    }
+    m_coreInstallBody = body;
+    QTimer::singleShot(0, this, [this]() {
+        applyCoreCatalog(m_coreInstallBody);
+        m_coreInstallBody.clear();
+        m_coreBusy = false;
+        refreshStatus();
+        setMessage(QStringLiteral("已安装"));
+    });
 }
 
 void Controller::setAllowLan(bool on)
@@ -1534,6 +1625,27 @@ QString Controller::messageFor(const QString &code) const
     if (code == QLatin1String("tun running")) {
         return QStringLiteral("请先关闭代理");
     }
+    if (code == QLatin1String("disconnect first")) {
+        return QStringLiteral("请先断开代理");
+    }
+    if (code == QLatin1String("unknown release")) {
+        return QStringLiteral("清单里没有这个版本");
+    }
+    if (code == QLatin1String("hash mismatch")) {
+        return QStringLiteral("校验失败，旧核心未替换");
+    }
+    if (code == QLatin1String("license mismatch")) {
+        return QStringLiteral("许可证校验失败，旧核心未替换");
+    }
+    if (code == QLatin1String("download failed")) {
+        return QStringLiteral("核心下载失败");
+    }
+    if (code == QLatin1String("invalid file")) {
+        return QStringLiteral("文件无效，旧核心未替换");
+    }
+    if (code == QLatin1String("tun held") || code == QLatin1String("already-running")) {
+        return QStringLiteral("旧核心仍占用网络，已拒绝再启动一份");
+    }
     if (code == QLatin1String("no candidate")) {
         return QStringLiteral("没有可激活的配置");
     }
@@ -1682,7 +1794,10 @@ void Controller::applyStatus(const QByteArray &body)
     }
     const QString helperVersion = object.value(QStringLiteral("helperVersion")).toString();
     const QString apiVersion = object.value(QStringLiteral("apiVersion")).toString();
-    const QString coreVersion = object.value(QStringLiteral("coreVersion")).toString();
+    QString coreVersion = object.value(QStringLiteral("coreVersion")).toString();
+    if (object.value(QStringLiteral("corePlace")).toString() == QLatin1String("data") && !coreVersion.isEmpty()) {
+        coreVersion += QStringLiteral(" · 数据目录");
+    }
     const bool mismatch = !helperVersion.isEmpty() && (helperVersion != QLatin1String(kAppVersion) || apiVersion != QLatin1String(kApiVersion));
     const bool missingVersion = helper && helperVersion.isEmpty();
     const QString versionText = QStringLiteral("助手 %1 · API %2 · 核心 %3").arg(

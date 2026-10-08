@@ -20,6 +20,8 @@ var (
 	HelperPid   string
 	KillSwitch  string
 	AllowLAN    string
+	CoreFile    string
+	CoreTag     string
 	uid         int
 	gid         int
 )
@@ -50,6 +52,8 @@ func Init() error {
 	HelperPid = filepath.Join(Runtime, "rayutd.pid")
 	KillSwitch = filepath.Join(data, "kill-switch")
 	AllowLAN = filepath.Join(data, "allow-lan")
+	CoreFile = filepath.Join(data, "core", "mihomo")
+	CoreTag = filepath.Join(data, "core", "tag")
 	return prepareDirs(data, config)
 }
 
@@ -92,6 +96,9 @@ func prepareDirs(data, config string) error {
 	if err := os.MkdirAll(Runtime, 0o700); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(CoreFile), 0o755); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(config, 0o700); err != nil {
 		return err
 	}
@@ -99,6 +106,9 @@ func prepareDirs(data, config string) error {
 		return err
 	}
 	if err := os.Chown(filepath.Join(data, "profiles"), uid, gid); err != nil {
+		return err
+	}
+	if err := os.Chown(filepath.Dir(CoreFile), uid, gid); err != nil {
 		return err
 	}
 	if err := os.Chown(config, uid, gid); err != nil {

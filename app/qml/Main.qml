@@ -372,6 +372,12 @@ MainView {
     }
 
     Component {
+        id: corePage
+
+        CorePage {}
+    }
+
+    Component {
         id: aboutPage
 
         Page {
@@ -1005,6 +1011,8 @@ MainView {
                 stack.push(sessionPage)
             else if (page === "about")
                 stack.push(aboutPage)
+            else if (page === "core")
+                stack.push(corePage)
             else if (page === "editor") {
                 root.pendingEditorGroup = Controller.viewedGroup
                 root.pendingEditorIndex = -1
@@ -1095,6 +1103,15 @@ MainView {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     text: Controller.allowLan ? "同一局域网可连接端口 " + Controller.lanPort : "端口 " + Controller.lanPort + " 只在本机"
+                }
+
+                Button {
+                    width: parent.width
+                    text: "核心"
+                    onClicked: {
+                        drawerNav.page = "core"
+                        drawerNav.start()
+                    }
                 }
 
                 Button {

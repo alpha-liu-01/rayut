@@ -3,5 +3,6 @@
         <file>Main.qml</file>
         <file>HomePage.qml</file>
         <file>GroupsPage.qml</file>
+        <file>CorePage.qml</file>
     </qresource>
 </RCC>
