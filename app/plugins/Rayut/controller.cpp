@@ -651,7 +651,8 @@ void Controller::enableTun()
     }
     QByteArray body;
     if (!request(QStringLiteral("POST"), QStringLiteral("/v1/tun/enable"), QByteArray(), &body, 30000)) {
-        m_configBroken = true;
+        const QString code = QString::fromUtf8(body).trimmed();
+        m_configBroken = code == QLatin1String("invalid config") || code == QLatin1String("invalid yaml");
         queueStateChanged();
         return;
     }
@@ -1846,6 +1847,15 @@ QString Controller::messageFor(const QString &code) const
     }
     if (code == QLatin1String("core not running")) {
         return QCoreApplication::translate("rayut", "Core is not running");
+    }
+    if (code == QLatin1String("recover failed")) {
+        return QCoreApplication::translate("rayut", "Could not restore routing rules.");
+    }
+    if (code == QLatin1String("tun failed")) {
+        return QCoreApplication::translate("rayut", "The tunnel did not start.");
+    }
+    if (code == QLatin1String("start failed")) {
+        return QCoreApplication::translate("rayut", "The core did not start.");
     }
     if (code == QLatin1String("controller unavailable")) {
         return QCoreApplication::translate("rayut", "Turn the proxy off, then on again");

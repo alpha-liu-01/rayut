@@ -683,7 +683,7 @@
     </message>
     <message>
         <location filename="../plugins/Rayut/controller.cpp" line="267"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1848"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1849"/>
         <source>Core is not running</source>
         <translation type="unfinished"></translation>
     </message>
@@ -695,10 +695,10 @@
     <message>
         <location filename="../plugins/Rayut/controller.cpp" line="510"/>
         <location filename="../plugins/Rayut/controller.cpp" line="649"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="666"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="732"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="788"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1209"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="667"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="733"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="789"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1210"/>
         <source>Version mismatch. Connect again.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -723,360 +723,375 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="736"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="737"/>
         <source>Disconnecting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="744"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="970"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1496"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1576"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1815"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="745"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="971"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1497"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1577"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1816"/>
         <source>Turn the proxy off first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="748"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="749"/>
         <source>Checking and installing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="763"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="764"/>
         <source>Installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="769"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="770"/>
         <source>Applying</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="805"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="880"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="806"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="881"/>
         <source>Imported</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="844"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="865"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="845"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="866"/>
         <source>Could not read that picture</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="896"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="897"/>
         <source>The clipboard is empty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="911"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="912"/>
         <source>Copy a link of that type first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="973"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="974"/>
         <source>Switched</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="978"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="979"/>
         <source>Refreshed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="983"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="995"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="984"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="996"/>
         <source>Deleted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="988"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="989"/>
         <source>Nodes deleted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1019"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1643"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1020"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1644"/>
         <source>Selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1080"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1081"/>
         <source>No share link to export</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1085"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1871"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1086"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1881"/>
         <source>Request failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1089"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1167"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1090"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1168"/>
         <source>Copied</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1136"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1145"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1137"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1146"/>
         <source>No saved share link</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1152"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1161"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1153"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1162"/>
         <source>This link cannot be drawn as a code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1184"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1591"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1185"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1592"/>
         <source>Saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1481"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1482"/>
         <source>Activated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1486"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1487"/>
         <source>Checked. The current profile was not replaced.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1492"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1516"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1572"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="1812"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1493"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1517"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1573"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1813"/>
         <source>No such group</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1501"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1502"/>
         <source>Rule template applied</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1528"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1529"/>
         <source>Loaded the current profile</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1565"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1566"/>
         <source>Written back to the text. Not saved yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1579"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1580"/>
         <source>Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1694"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1695"/>
         <source>Testing delay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1703"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1704"/>
         <source>Delay %1 ms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1773"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1774"/>
         <source>Profile is missing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1776"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1777"/>
         <source>Core is missing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1779"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1780"/>
         <source>The content is empty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1782"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1783"/>
         <source>The content is too large</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1785"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1786"/>
         <source>Configuration check failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1788"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1789"/>
         <source>The link is incomplete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1791"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1792"/>
         <source>Unrecognized link</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1794"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1795"/>
         <source>file addresses are not allowed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1797"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1798"/>
         <source>External programs are not allowed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1800"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1801"/>
         <source>Opening the LAN is not allowed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1803"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1804"/>
         <source>The controller must stay on this phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1806"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1807"/>
         <source>Subscription download failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1809"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1810"/>
         <source>This is not a subscription</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1818"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1819"/>
         <source>Disconnect the proxy first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1821"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1822"/>
         <source>That version is not in the list</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1824"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1825"/>
         <source>Check failed. The old core was not replaced.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1827"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1828"/>
         <source>License check failed. The old core was not replaced.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1830"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1831"/>
         <source>Core download failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1833"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1834"/>
         <source>Invalid file. The old core was not replaced.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1836"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1837"/>
         <source>The old core still holds the network. A second one was refused.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1839"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1840"/>
         <source>No profile to activate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1842"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1843"/>
         <source>No such rule template</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1845"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1846"/>
         <source>Invalid field</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1851"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1852"/>
+        <source>Could not restore routing rules.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../plugins/Rayut/controller.cpp" line="1855"/>
+        <source>The tunnel did not start.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../plugins/Rayut/controller.cpp" line="1858"/>
+        <source>The core did not start.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../plugins/Rayut/controller.cpp" line="1861"/>
         <source>Turn the proxy off, then on again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1854"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1864"/>
         <source>No such node</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1857"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1867"/>
         <source>This group cannot be chosen by hand</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1860"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1870"/>
         <source>Invalid name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1863"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1873"/>
         <source>Selection failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1866"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1876"/>
         <source>Delay test failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1869"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1879"/>
         <source>Delay test timed out</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1892"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1902"/>
         <source>Not tested</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1988"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="1998"/>
         <source>%1 · data directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2025"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2035"/>
         <source>none</source>
         <comment>empty profile name</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="1992"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2002"/>
         <source>Helper %1 · API %2 · Core %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2024"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2034"/>
         <source>Current profile: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2027"/>
-        <location filename="../plugins/Rayut/controller.cpp" line="2033"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2037"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2043"/>
         <source> (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2031"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2041"/>
         <source>Waiting to activate: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2036"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2046"/>
         <source>Check failed. The current profile was not replaced.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../plugins/Rayut/controller.cpp" line="2039"/>
+        <location filename="../plugins/Rayut/controller.cpp" line="2049"/>
         <source>Rules: %1</source>
         <translation type="unfinished"></translation>
     </message>
