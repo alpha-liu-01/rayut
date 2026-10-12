@@ -52,5 +52,30 @@ if machine != 183:
     sys.exit("mihomo is not aarch64")
 PY
 
+geo="$root/daemon/internal/core/geodata.go"
+python3 - "$geo" "$core_dir" "$work" <<'PY'
+import hashlib, pathlib, re, subprocess, sys
+text = pathlib.Path(sys.argv[1]).read_text()
+core = pathlib.Path(sys.argv[2])
+work = pathlib.Path(sys.argv[3])
+blocks = re.findall(
+    r'Name:\s+"([^"]+)",\s+URL:\s+"([^"]+)",\s+SHA256:\s+"([0-9a-f]{64})"',
+    text,
+)
+if len(blocks) != 3:
+    sys.exit(f"expected 3 geo files, found {len(blocks)}")
+for name, url, sha in blocks:
+    if not url.startswith("https://github.com/MetaCubeX/meta-rules-dat/releases/download/"):
+        sys.exit(f"unexpected geo URL: {url}")
+    dest = work / name
+    subprocess.check_call(["curl", "-fsSL", "-o", str(dest), url])
+    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+    if digest != sha:
+        sys.exit(f"{name} SHA-256 is {digest}, catalog says {sha}")
+    out = core / name
+    out.write_bytes(dest.read_bytes())
+    print(f"{name} {digest}")
+PY
+
 cd "$root/app"
 clickable build --arch arm64 --accept-review-errors

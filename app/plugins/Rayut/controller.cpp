@@ -32,7 +32,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.30";
+const char kAppVersion[] = "0.1.35";
 const char kApiVersion[] = "1";
 
 bool sameNodeShape(const QVariantMap &left, const QVariantMap &right)

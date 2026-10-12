@@ -19,8 +19,8 @@ Rayut 是 Ubuntu Touch 上的全局代理。界面启动一个以 root 运行的
 
 随包装上的每一份二进制都有版本、许可证和来源。应用里的关于页打开的是同一份清单。
 
-- `rayut` 0.1.30，GPL-3.0-or-later，https://github.com/alpha-liu-01/rayut
-- `rayutd` 0.1.30，GPL-3.0-or-later，同一仓库的 `daemon/` 目录
+- `rayut` 0.1.35，GPL-3.0-or-later，https://github.com/alpha-liu-01/rayut
+- `rayutd` 0.1.35，GPL-3.0-or-later，同一仓库的 `daemon/` 目录
 - `mihomo` v1.19.32，GPL-3.0，https://github.com/MetaCubeX/mihomo/tree/v1.19.32
 
 mihomo 用的是该 tag 的官方 linux-arm64 压缩包：

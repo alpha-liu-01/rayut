@@ -20,6 +20,17 @@ if(NOT EXISTS "${RAYUT_CORE_DIR}/rayutd" OR NOT EXISTS "${RAYUT_CORE_DIR}/mihomo
     message(FATAL_ERROR "packaging/core/rayutd and packaging/core/mihomo must exist before the Click build")
 endif()
 install(PROGRAMS "${RAYUT_CORE_DIR}/rayutd" "${RAYUT_CORE_DIR}/mihomo" DESTINATION bin)
+set(RAYUT_GEO_FILES geoip.metadb GeoSite.dat GeoIP.dat)
+foreach(geo ${RAYUT_GEO_FILES})
+    if(NOT EXISTS "${RAYUT_CORE_DIR}/${geo}")
+        message(FATAL_ERROR "packaging/core/${geo} must exist before the Click build")
+    endif()
+endforeach()
+install(FILES
+    "${RAYUT_CORE_DIR}/geoip.metadb"
+    "${RAYUT_CORE_DIR}/GeoSite.dat"
+    "${RAYUT_CORE_DIR}/GeoIP.dat"
+    DESTINATION bin)
 
 qt5_add_resources(QT_RESOURCES qml/qml.qrc)
 add_executable(${PROJECT_NAME} main.cpp ${QT_RESOURCES})

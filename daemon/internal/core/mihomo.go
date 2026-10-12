@@ -111,6 +111,9 @@ func Test(configPath string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
+	if err := installGeoFiles(filepath.Dir(paths.Mihomo), dir); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, Executable(), "-t", "-d", dir, "-f", configPath)
@@ -137,6 +140,9 @@ func Start() error {
 		return fmt.Errorf("profile missing")
 	}
 	if err := os.MkdirAll(paths.Runtime, 0o700); err != nil {
+		return err
+	}
+	if err := installGeoFiles(filepath.Dir(paths.Mihomo), paths.Runtime); err != nil {
 		return err
 	}
 	payload := filepath.Join(filepath.Dir(paths.Profile), "subscription.payload")

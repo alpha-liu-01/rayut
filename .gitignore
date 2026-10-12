@@ -4,4 +4,7 @@
 *.click
 /app/packaging/core/rayutd
 /app/packaging/core/mihomo
+/app/packaging/core/geoip.metadb
+/app/packaging/core/GeoSite.dat
+/app/packaging/core/GeoIP.dat
 /.cursor/

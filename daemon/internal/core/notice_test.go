@@ -28,6 +28,20 @@ func TestComponentNoticesNameEveryBinary(t *testing.T) {
 	}
 	requireBlocks(t, en, "Binary: ")
 	requireBlocks(t, zh, "二进制：")
+	for _, text := range []string{en, zh} {
+		for _, field := range []string{GeoLicense, GeoLicenseURL, GeoLicenseSHA256, GeoSource, GeoPublished} {
+			if !strings.Contains(text, field) {
+				t.Errorf("component notice missing %s", field)
+			}
+		}
+		for _, file := range GeoFiles {
+			for _, field := range []string{file.Name, file.URL, file.SHA256} {
+				if !strings.Contains(text, field) {
+					t.Errorf("component notice missing %s", field)
+				}
+			}
+		}
+	}
 }
 
 func TestPrivilegeNoticeMatchesLauncher(t *testing.T) {

@@ -36,6 +36,9 @@ func main() {
 	if os.Getenv("RAYUTD_CHILD") != "1" {
 		supervise()
 	}
+	// The GUI drops the stderr pipe after sudo returns. A later write to that
+	// pipe raises SIGPIPE and kills this process before it can answer.
+	signal.Ignore(syscall.SIGPIPE)
 	if err := cgroup.LeaveAppScope(os.Getpid()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
@@ -113,14 +116,17 @@ func supervise() {
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(paths.Ready); err == nil {
+			cgroup.Note("parent saw ready")
 			os.Exit(0)
 		}
 		var status syscall.WaitStatus
 		wpid, err := syscall.Wait4(cmd.Process.Pid, &status, syscall.WNOHANG, nil)
 		if err == nil && wpid == cmd.Process.Pid {
 			if status.Exited() {
+				cgroup.Note("child exit " + strconv.Itoa(status.ExitStatus()))
 				os.Exit(status.ExitStatus())
 			}
+			cgroup.Note("child signal " + strconv.Itoa(int(status.Signal())))
 			os.Exit(1)
 		}
 		time.Sleep(50 * time.Millisecond)
