@@ -57,9 +57,12 @@ func TestPrivilegeNoticeMatchesLauncher(t *testing.T) {
 		"ip -6 neigh replace <address> dev Meta nud permanent",
 		"ip -o link show",
 		"getent passwd <name>",
+		"getent passwd <uid>",
 		"<mihomo> -v",
 		"<mihomo> -t -d <check directory> -f <config>",
 		"<mihomo> -d <runtime directory> -f <config>",
+		"systemctl --user reset-failed rayut-helper.scope",
+		"systemd-run --user --scope --unit=rayut-helper.scope --collect --property=Delegate=yes --property=KillMode=none /bin/sleep infinity",
 	}
 	for _, name := range []string{"privileges.en.txt", "privileges.zh.txt"} {
 		text := readNotice(t, name)

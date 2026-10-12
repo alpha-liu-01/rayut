@@ -19,8 +19,8 @@ The program is free software under GPL-3.0-or-later. See `LICENSE`.
 
 Each shipped binary has a version, a license, and a source. The about page in the app opens the same list.
 
-- `rayut` 0.1.35, GPL-3.0-or-later, https://github.com/alpha-liu-01/rayut
-- `rayutd` 0.1.35, GPL-3.0-or-later, the `daemon/` directory of the same repository
+- `rayut` 0.1.38, GPL-3.0-or-later, https://github.com/alpha-liu-01/rayut
+- `rayutd` 0.1.38, GPL-3.0-or-later, the `daemon/` directory of the same repository
 - `mihomo` v1.19.32, GPL-3.0, https://github.com/MetaCubeX/mihomo/tree/v1.19.32
 
 The mihomo build is the official linux-arm64 archive for that tag:

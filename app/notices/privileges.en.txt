@@ -18,11 +18,14 @@ ip -6 route show table 2022
 ip -6 neigh replace <address> dev Meta nud permanent
 ip -o link show
 getent passwd <name>
+getent passwd <uid>
 <mihomo> -v
 <mihomo> -t -d <check directory> -f <config>
 <mihomo> -d <runtime directory> -f <config>
+systemctl --user reset-failed rayut-helper.scope
+systemd-run --user --scope --unit=rayut-helper.scope --collect --property=Delegate=yes --property=KillMode=none /bin/sleep infinity
 
-<mihomo> is <application directory>/bin/mihomo, or the data-directory copy at core/mihomo when that copy is a regular file. rayutd also starts one child of itself with the same --session argument so the helper can leave the application cgroup. It writes its own pid, and the core's pid, into a parent cgroup.procs file for the same reason.
+<mihomo> is <application directory>/bin/mihomo, or the data-directory copy at core/mihomo when that copy is a regular file. rayutd also starts one child of itself with the same --session argument so the helper can leave the application cgroup. On a hybrid cgroup system it writes its own pid, and the core's pid, into a parent cgroup.procs file. On a pure cgroup v2 system the uid is taken from the cgroup path and the group from /run/user/<uid>. getent passwd <uid> is only the fallback. The two scope commands above then run as that user, and rayutd writes those pids into the scope. The sleep stays for the life of the scope. KillMode=none keeps the helper when the scope stops. For 30 seconds after start, rayutd checks again and writes the pid once more if it is back in the click cgroup.
 
 Turning the proxy off runs recovery. The helper exiting also runs recovery. Recovery deletes a policy rule only when its priority is 9000, 9001, 9002, or 9010 and the rule text is one of: lookup 2022, iif Meta, suppress_prefixlength 0, goto 9010, or from all nop. A rule at those priorities with different text is left in place. Recovery then runs the two flush commands above, which clear routing table 2022 only. It does not flush the main routing table. It does not run iptables -F. It does not flush nftables.
 
