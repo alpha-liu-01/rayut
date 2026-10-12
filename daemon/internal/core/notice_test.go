@@ -35,7 +35,7 @@ func TestComponentNoticesNameEveryBinary(t *testing.T) {
 			}
 		}
 		for _, file := range GeoFiles {
-			for _, field := range []string{file.Name, file.URL, file.SHA256} {
+			for _, field := range []string{file.Name, file.Path, file.SHA256} {
 				if !strings.Contains(text, field) {
 					t.Errorf("component notice missing %s", field)
 				}

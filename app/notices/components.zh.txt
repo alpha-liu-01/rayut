@@ -1,14 +1,14 @@
 这个安装包里的二进制。每一份都有版本、许可证和来源。
 
 二进制：rayut
-版本：0.1.38
+版本：0.1.39
 许可证：GPL-3.0-or-later
 来源：https://github.com/alpha-liu-01/rayut
 
 界面程序。Click 包名是 rayut.alphaliu01。由本仓库构建，装在 Click 根目录。
 
 二进制：rayutd
-版本：0.1.38
+版本：0.1.39
 许可证：GPL-3.0-or-later
 来源：https://github.com/alpha-liu-01/rayut
 
@@ -19,13 +19,13 @@
 许可证：GPL-3.0
 来源：https://github.com/MetaCubeX/mihomo/tree/v1.19.32
 
-官方 linux-arm64 压缩包：
+由 submodule third_party/mihomo 的 tag v1.19.32 编译。安装包不下载上游压缩包。该压缩包是：
 https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz
 压缩包 SHA-256：9dd862e28b46ff7d775f169cceebc28deccaa0a9e804237d421cd2571e0caba0
 许可证文件：https://raw.githubusercontent.com/MetaCubeX/mihomo/v1.19.32/LICENSE
 许可证 SHA-256：3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
 
-安装包把这个二进制放在 bin/mihomo。应用内安装接受的副本在数据目录 core/mihomo，下次启动优先用它。没有 latest 通道。
+安装包把从这个 tag 编译出的二进制放在 bin/mihomo。启动用这一份。数据目录里的副本不使用。
 
 放在 mihomo 旁边的数据文件。mihomo 从自己的主目录读取。启动或检查配置之前，运行目录里没有、或大小对不上时，Rayut 从安装包复制过去。
 
@@ -33,27 +33,27 @@ https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm6
 版本：2026-10-12T01:31:04Z
 许可证：GPL-3.0
 来源：https://github.com/MetaCubeX/meta-rules-dat
-https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb
+third_party/geodata/geoip.metadb
 SHA-256：b8f447617c3f6d8ef0f7528c23dfba695bca16a31a396bc4c1fca49e9f038ae3
 
 数据文件：GeoSite.dat
 版本：2026-10-12T01:31:04Z
 许可证：GPL-3.0
 来源：https://github.com/MetaCubeX/meta-rules-dat
-https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat
+third_party/geodata/GeoSite.dat
 SHA-256：c951c1afc331ea82a46f568785d73d5bd1bcc99626739639ae9dfaa3f6aa6e71
 
 数据文件：GeoIP.dat
 版本：2026-10-12T01:31:04Z
 许可证：GPL-3.0
 来源：https://github.com/MetaCubeX/meta-rules-dat
-https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat
+third_party/geodata/GeoIP.dat
 SHA-256：116cc0f03d48991962f7f9cdbbcf53d45d89777f9c3cd1a663210853e5df6093
 
 许可证文件：https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/master/LICENSE
 许可证 SHA-256：3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
 
-这三份文件装在 bin/。哈希取自 2026-10-12T01:31:04Z 发布的 meta-rules-dat。ASN.mmdb 没有放进安装包。
+这三份文件从 third_party/geodata 装进 bin/。构建时核对上面的哈希，不下载。哈希取自 2026-10-12T01:31:04Z 发布的 meta-rules-dat。ASN.mmdb 没有放进安装包。
 
 链进 rayutd 的 Go 模块。这不是单独的二进制。
 
@@ -71,7 +71,7 @@ Click 打包模板。这不是安装包里的二进制。
 许可证：GPL-3.0
 来源：https://gitlab.com/clickable/clickable
 
-这个 Click 用该框架的 Clickable CMake 模板构建。Clickable 本身是构建工具，不装到手机上。本仓库里的打包文件属于 Rayut。
+这个 Click 用该框架的 Clickable CMake 模板构建。同一次 Clickable 构建从 daemon/ 编译 rayutd，从 submodule 编译 mihomo。Clickable 本身是构建工具，不装到手机上。本仓库里的打包文件属于 Rayut。
 
 编译进界面的库。这些不是单独的二进制。
 

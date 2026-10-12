@@ -9,6 +9,11 @@
         <translation>核心</translation>
     </message>
     <message>
+        <location filename="../qml/CorePage.qml" line="40" />
+        <source>The proxy core is the copy shipped in this app. Rayut does not download another one.</source>
+        <translation>代理核心是这个应用自带的那一份。Rayut 不会再下载另一份。</translation>
+    </message>
+    <message>
         <location filename="../qml/CorePage.qml" line="41" />
         <source>Installed. The next start uses %1 from the data directory.</source>
         <translation>已安装。下次启动使用数据目录里的 %1。</translation>

@@ -157,6 +157,7 @@ func overlayController(root map[string]any, secret string) {
 	root["external-controller"] = ExternalController
 	root["secret"] = secret
 	root["unified-delay"] = true
+	root["geo-auto-update"] = false
 	delete(root, "external-controller-tls")
 	delete(root, "external-controller-unix")
 	delete(root, "external-controller-pipe")

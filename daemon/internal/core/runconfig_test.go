@@ -59,6 +59,9 @@ func TestLANStaysOffTheController(t *testing.T) {
 	if !strings.Contains(text, "allow-lan: false") || !strings.Contains(text, "bind-address: 127.0.0.1") {
 		t.Fatalf("lan still open: %s", text)
 	}
+	if !strings.Contains(text, "geo-auto-update: false") {
+		t.Fatalf("geo update left on: %s", text)
+	}
 	if !strings.Contains(text, "external-controller: 127.0.0.1:19090") || strings.Contains(text, "0.0.0.0:9090") {
 		t.Fatalf("controller left the loopback: %s", text)
 	}

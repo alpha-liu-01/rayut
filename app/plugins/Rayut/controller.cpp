@@ -32,7 +32,7 @@
 #include <QUrl>
 
 namespace {
-const char kAppVersion[] = "0.1.38";
+const char kAppVersion[] = "0.1.39";
 const char kApiVersion[] = "1";
 
 bool sameNodeShape(const QVariantMap &left, const QVariantMap &right)
@@ -185,7 +185,6 @@ void EditLineModel::joinLine(int row, int *focusRow, int *focusColumn)
 Controller::Controller(QObject *parent)
     : QObject(parent)
     , m_network(new QNetworkAccessManager(this))
-    , m_coreBusy(false)
     , m_configState(QStringLiteral("ok"))
     , m_helperRunning(false)
     , m_tunRunning(false)
@@ -465,11 +464,6 @@ QString Controller::coreTag() const
     return m_coreTag;
 }
 
-bool Controller::coreBusy() const
-{
-    return m_coreBusy;
-}
-
 QString Controller::appVersion() const
 {
     return QString::fromLatin1(kAppVersion);
@@ -722,47 +716,6 @@ void Controller::refreshCores()
         return;
     }
     applyCoreCatalog(body);
-}
-
-void Controller::installCore(const QString &tag, bool disconnectFirst)
-{
-    if (m_coreBusy) {
-        return;
-    }
-    if (m_versionMismatch) {
-        setMessage(QCoreApplication::translate("rayut", "Version mismatch. Connect again."));
-        return;
-    }
-    if (disconnectFirst && (m_tunRunning || m_coreRunning)) {
-        setMessage(QCoreApplication::translate("rayut", "Disconnecting"));
-        QByteArray body;
-        if (!request(QStringLiteral("POST"), QStringLiteral("/v1/tun/disable"), QByteArray(), &body, 30000)) {
-            return;
-        }
-        applyStatus(body);
-    }
-    if (m_tunRunning || m_coreRunning) {
-        setMessage(QCoreApplication::translate("rayut", "Turn the proxy off first"));
-        return;
-    }
-    m_coreBusy = true;
-    setMessage(QCoreApplication::translate("rayut", "Checking and installing"));
-    QJsonObject object;
-    object.insert(QStringLiteral("tag"), tag);
-    QByteArray body;
-    if (!request(QStringLiteral("POST"), QStringLiteral("/v1/cores/install"), QJsonDocument(object).toJson(QJsonDocument::Compact), &body, 180000)) {
-        m_coreBusy = false;
-        queueStateChanged();
-        return;
-    }
-    m_coreInstallBody = body;
-    QTimer::singleShot(0, this, [this]() {
-        applyCoreCatalog(m_coreInstallBody);
-        m_coreInstallBody.clear();
-        m_coreBusy = false;
-        refreshStatus();
-        setMessage(QCoreApplication::translate("rayut", "Installed"));
-    });
 }
 
 void Controller::setAllowLan(bool on)
@@ -1814,24 +1767,6 @@ QString Controller::messageFor(const QString &code) const
     }
     if (code == QLatin1String("tun running")) {
         return QCoreApplication::translate("rayut", "Turn the proxy off first");
-    }
-    if (code == QLatin1String("disconnect first")) {
-        return QCoreApplication::translate("rayut", "Disconnect the proxy first");
-    }
-    if (code == QLatin1String("unknown release")) {
-        return QCoreApplication::translate("rayut", "That version is not in the list");
-    }
-    if (code == QLatin1String("hash mismatch")) {
-        return QCoreApplication::translate("rayut", "Check failed. The old core was not replaced.");
-    }
-    if (code == QLatin1String("license mismatch")) {
-        return QCoreApplication::translate("rayut", "License check failed. The old core was not replaced.");
-    }
-    if (code == QLatin1String("download failed")) {
-        return QCoreApplication::translate("rayut", "Core download failed");
-    }
-    if (code == QLatin1String("invalid file")) {
-        return QCoreApplication::translate("rayut", "Invalid file. The old core was not replaced.");
     }
     if (code == QLatin1String("tun held") || code == QLatin1String("already-running")) {
         return QCoreApplication::translate("rayut", "The old core still holds the network. A second one was refused.");

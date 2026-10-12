@@ -54,7 +54,6 @@ class Controller : public QObject {
     Q_PROPERTY(QVariantList coreReleases READ coreReleases NOTIFY stateChanged)
     Q_PROPERTY(QString corePlace READ corePlace NOTIFY stateChanged)
     Q_PROPERTY(QString coreTag READ coreTag NOTIFY stateChanged)
-    Q_PROPERTY(bool coreBusy READ coreBusy NOTIFY stateChanged)
     Q_PROPERTY(QVariantList proxyGroups READ proxyGroups NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionLogs READ sessionLogs NOTIFY stateChanged)
     Q_PROPERTY(QVariantList sessionConnections READ sessionConnections NOTIFY stateChanged)
@@ -103,7 +102,6 @@ public:
     QVariantList coreReleases() const;
     QString corePlace() const;
     QString coreTag() const;
-    bool coreBusy() const;
     QVariantList proxyGroups() const;
     QVariantList sessionLogs() const;
     QVariantList sessionConnections() const;
@@ -142,7 +140,6 @@ public:
     Q_INVOKABLE void setKillSwitch(bool on);
     Q_INVOKABLE void setAllowLan(bool on);
     Q_INVOKABLE void refreshCores();
-    Q_INVOKABLE void installCore(const QString &tag, bool disconnectFirst);
     Q_INVOKABLE void refreshStatus();
     Q_INVOKABLE void importContent(const QString &content);
     Q_INVOKABLE void importURL(const QString &url);
@@ -228,8 +225,6 @@ private:
     QVariantList m_coreReleases;
     QString m_corePlace;
     QString m_coreTag;
-    QByteArray m_coreInstallBody;
-    bool m_coreBusy;
     QString m_configState;
     bool m_helperRunning;
     bool m_tunRunning;

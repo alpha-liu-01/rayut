@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -27,7 +26,7 @@ const ListenAddr = "127.0.0.1:18771"
 // HelperVersion and APIVersion are reported to the client. A mismatch is only
 // a prompt to reconnect; the helper does not stop itself or the core.
 const (
-	HelperVersion = "0.1.38"
+	HelperVersion = "0.1.39"
 	APIVersion    = "1"
 )
 
@@ -76,7 +75,6 @@ func New() (*Server, error) {
 	mux.HandleFunc("/v1/kill-switch", s.auth(s.killSwitch))
 	mux.HandleFunc("/v1/lan", s.auth(s.allowLan))
 	mux.HandleFunc("/v1/cores", s.auth(s.cores))
-	mux.HandleFunc("/v1/cores/install", s.auth(s.installCore))
 	mux.HandleFunc("/v1/tun/enable", s.auth(s.enable))
 	mux.HandleFunc("/v1/tun/disable", s.auth(s.disable))
 	mux.HandleFunc("/v1/profiles", s.auth(s.profiles))
@@ -285,15 +283,8 @@ func (s *Server) snapshot() map[string]string {
 		"helperVersion": HelperVersion,
 		"apiVersion":    APIVersion,
 		"coreVersion":   core.Version(),
-		"corePlace":     corePlace(),
+		"corePlace":     "app",
 	}
-}
-
-func corePlace() string {
-	if core.UsingDataCopy() {
-		return "data"
-	}
-	return "app"
 }
 
 func (s *Server) killSwitch(w http.ResponseWriter, r *http.Request) {
@@ -358,32 +349,6 @@ func (s *Server) allowLan(w http.ResponseWriter, r *http.Request) {
 func (s *Server) cores(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method", http.StatusMethodNotAllowed)
-		return
-	}
-	writeJSON(w, core.CatalogView())
-}
-
-func (s *Server) installCore(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method", http.StatusMethodNotAllowed)
-		return
-	}
-	var body struct {
-		Tag string `json:"tag"`
-	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body); err != nil {
-		http.Error(w, "invalid", http.StatusBadRequest)
-		return
-	}
-	if err := core.Install(r.Context(), body.Tag); err != nil {
-		status := http.StatusBadRequest
-		switch err.Error() {
-		case "disconnect first":
-			status = http.StatusConflict
-		case "download failed":
-			status = http.StatusBadGateway
-		}
-		http.Error(w, err.Error(), status)
 		return
 	}
 	writeJSON(w, core.CatalogView())

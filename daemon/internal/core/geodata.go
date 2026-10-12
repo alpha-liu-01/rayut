@@ -8,10 +8,10 @@ import (
 )
 
 // GeoFile is one database placed beside the packaged mihomo binary.
-// The upstream tag is "latest" and moves. SHA256 is the pin the build checks.
+// Path is the file in this repository. SHA256 is the pin.
 type GeoFile struct {
 	Name   string
-	URL    string
+	Path   string
 	SHA256 string
 }
 
@@ -29,17 +29,17 @@ const (
 var GeoFiles = []GeoFile{
 	{
 		Name:   "geoip.metadb",
-		URL:    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb",
+		Path:   "third_party/geodata/geoip.metadb",
 		SHA256: "b8f447617c3f6d8ef0f7528c23dfba695bca16a31a396bc4c1fca49e9f038ae3",
 	},
 	{
 		Name:   "GeoSite.dat",
-		URL:    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat",
+		Path:   "third_party/geodata/GeoSite.dat",
 		SHA256: "c951c1afc331ea82a46f568785d73d5bd1bcc99626739639ae9dfaa3f6aa6e71",
 	},
 	{
 		Name:   "GeoIP.dat",
-		URL:    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat",
+		Path:   "third_party/geodata/GeoIP.dat",
 		SHA256: "116cc0f03d48991962f7f9cdbbcf53d45d89777f9c3cd1a663210853e5df6093",
 	},
 }

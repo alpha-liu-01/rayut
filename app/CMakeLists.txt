@@ -15,21 +15,17 @@ install(FILES rayut.apparmor DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES rayut.desktop DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES assets/logo.svg DESTINATION assets)
 
-set(RAYUT_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packaging/core")
-if(NOT EXISTS "${RAYUT_CORE_DIR}/rayutd" OR NOT EXISTS "${RAYUT_CORE_DIR}/mihomo")
-    message(FATAL_ERROR "packaging/core/rayutd and packaging/core/mihomo must exist before the Click build")
-endif()
-install(PROGRAMS "${RAYUT_CORE_DIR}/rayutd" "${RAYUT_CORE_DIR}/mihomo" DESTINATION bin)
+set(RAYUT_GEODATA "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/geodata")
 set(RAYUT_GEO_FILES geoip.metadb GeoSite.dat GeoIP.dat)
 foreach(geo ${RAYUT_GEO_FILES})
-    if(NOT EXISTS "${RAYUT_CORE_DIR}/${geo}")
-        message(FATAL_ERROR "packaging/core/${geo} must exist before the Click build")
+    if(NOT EXISTS "${RAYUT_GEODATA}/${geo}")
+        message(FATAL_ERROR "third_party/geodata/${geo} must exist before the Click build")
     endif()
 endforeach()
 install(FILES
-    "${RAYUT_CORE_DIR}/geoip.metadb"
-    "${RAYUT_CORE_DIR}/GeoSite.dat"
-    "${RAYUT_CORE_DIR}/GeoIP.dat"
+    "${RAYUT_GEODATA}/geoip.metadb"
+    "${RAYUT_GEODATA}/GeoSite.dat"
+    "${RAYUT_GEODATA}/GeoIP.dat"
     DESTINATION bin)
 
 qt5_add_resources(QT_RESOURCES qml/qml.qrc)

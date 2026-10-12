@@ -1,10 +1,25 @@
 package core
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestVendoredGeoFilesMatchCatalog(t *testing.T) {
+	for _, file := range GeoFiles {
+		data, err := os.ReadFile("../../../" + file.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != file.SHA256 {
+			t.Fatalf("%s hash changed", file.Name)
+		}
+	}
+}
 
 func TestInstallGeoFilesCopiesMissingAndReplacesDifferentSize(t *testing.T) {
 	src := t.TempDir()

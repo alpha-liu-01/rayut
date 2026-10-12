@@ -19,11 +19,11 @@ The program is free software under GPL-3.0-or-later. See `LICENSE`.
 
 Each shipped binary has a version, a license, and a source. The about page in the app opens the same list.
 
-- `rayut` 0.1.38, GPL-3.0-or-later, https://github.com/alpha-liu-01/rayut
-- `rayutd` 0.1.38, GPL-3.0-or-later, the `daemon/` directory of the same repository
+- `rayut` 0.1.39, GPL-3.0-or-later, https://github.com/alpha-liu-01/rayut
+- `rayutd` 0.1.39, GPL-3.0-or-later, the `daemon/` directory of the same repository
 - `mihomo` v1.19.32, GPL-3.0, https://github.com/MetaCubeX/mihomo/tree/v1.19.32
 
-The mihomo build is the official linux-arm64 archive for that tag:
+The mihomo binary in the click is compiled from the `third_party/mihomo` submodule at that tag. The upstream linux-arm64 archive for that tag is not downloaded:
 
 https://github.com/MetaCubeX/mihomo/releases/download/v1.19.32/mihomo-linux-arm64-v1.19.32.gz
 
@@ -61,9 +61,10 @@ The helper's own commands, and the rule cleanup, are listed in `app/notices/priv
 The click package name is `rayut.alphaliu01`. From the repository root:
 
 ```
-packaging/build-click.sh
+git submodule update --init
+clickable build --arch arm64
 ```
 
-That command builds `rayutd` from `daemon/` for `linux/arm64`, downloads the pinned mihomo archive, checks its SHA-256, and then runs the Click build. It does not use a local probe directory. `go` and `clickable` must be on `PATH`. Interface languages are described in `app/translations/README.md`.
+Clickable installs a pinned Go toolchain into its build image, compiles `rayutd` from `daemon/` and mihomo from `third_party/mihomo`, and checks the geo databases in `third_party/geodata`. It does not download those programs or databases. `clickable` must be on `PATH`. The review reports the unconfined template; that result is expected. Interface languages are described in `app/translations/README.md`.
 
 中文说明见 `README.zh-CN.md`。

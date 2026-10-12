@@ -36,14 +36,9 @@ func EndStop() { stopping.Store(false) }
 // Stopping reports whether Stop is in progress.
 func Stopping() bool { return stopping.Load() }
 
-// Executable is the data-directory core when that file is a regular non-empty
-// binary, and the packaged core otherwise. A symlink is never selected.
+// Executable is the core shipped in the click. A copy in the data directory is ignored.
 func Executable() string {
-	info, err := os.Lstat(paths.CoreFile)
-	if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
-		return paths.Mihomo
-	}
-	return paths.CoreFile
+	return paths.Mihomo
 }
 
 // Version runs `mihomo -v` and returns the version token.

@@ -1,0 +1,17 @@
+clickable_minimum_required: 8.8.0
+builder: cmake
+src_dir: app
+framework: ubuntu-sdk-20.04
+kill: rayut
+restrict_arch: arm64
+
+dependencies_host:
+  - ca-certificates
+  - curl
+
+image_setup:
+  run:
+    - curl -fsSL -o /tmp/go.tgz https://go.dev/dl/go1.27.1.linux-amd64.tar.gz && echo "63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445  /tmp/go.tgz" | sha256sum -c - && rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tgz && rm /tmp/go.tgz
+
+prebuild:
+  - bash ${ROOT}/packaging/clickable-prebuild.sh ${INSTALL_DIR} ${ROOT}

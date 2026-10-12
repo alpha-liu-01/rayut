@@ -12,8 +12,9 @@ type Release struct {
 	Source        string
 }
 
-// Catalog is the only set of cores the install path will fetch.
-// Hashes are of the upstream gzip and the LICENSE file at that tag.
+// Catalog is the mihomo tag this repository builds.
+// The URL and hashes identify the upstream release archive. The click
+// compiles third_party/mihomo and does not download that archive.
 var Catalog = []Release{
 	{
 		Tag:           "v1.19.32",
